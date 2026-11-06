@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-initial-schema
+      author: sidequest
+      changes:
+        - sql:
+            sql: SELECT 1
+            comment: Initial schema placeholder; domain tables will be introduced with their scoped issues.
