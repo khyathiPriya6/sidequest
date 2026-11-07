@@ -21,3 +21,9 @@ Read `docs/requirements/PRD.md`, `docs/architecture/ARCHITECTURE.md`, the assign
 
 ## Definition of Done
 Acceptance criteria satisfied, tests added or reason noted, documentation updated where needed, review completed, owner approves merge.
+
+## Design-first gate
+- Read `docs/design/UI-UX-SPEC.md`, `docs/design/DESIGN-SYSTEM.md`, `docs/design/USER-FLOWS.md`, and the relevant approved wireframe before building user-facing screens.
+- Sprint 0 design issues UX-001 through UX-006 must be reviewed and signed off before Quest CRUD/product UI implementation. Existing environment setup and health checks may continue.
+- Do not claim that design reference documents are completed Figma mockups; actual wireframes and prototype links require creation and approval.
+- Implement UI according to approved design states, accessibility and responsiveness; do not invent a new visual style without approval.
