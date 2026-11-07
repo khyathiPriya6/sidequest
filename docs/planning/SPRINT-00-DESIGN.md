@@ -24,3 +24,9 @@ PRD and architecture docs are available. Existing backend/db setup remains untou
 
 ## How to work
 For every issue: read specification → design → share preview → review → update Figma → document decision → close issue. No fake screenshots or claims of implementation.
+
+## Figma design workspace
+- [SideQuest — Gaming UI/UX Design](https://www.figma.com/design/0lh9h3dvhB3ndoLB1RvUNT)
+- Editable canvas: 6 desktop screen frames, 6 mobile screen frames, gaming foundations board with seven reusable component examples, and 3 user-journey diagrams.
+- **Review status:** Draft created; product-owner visual review and UX-001 through UX-006 sign-off are still required. These are initial design compositions, not a fully validated interactive prototype.
+- Screen node references: Desktop Explore `1:2`, Desktop Details `1:65`, Desktop Create `1:99`; Mobile Explore `2:2`, Mobile Details `2:42`, Mobile Create `2:72`.
