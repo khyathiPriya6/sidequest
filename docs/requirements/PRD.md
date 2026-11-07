@@ -44,3 +44,6 @@ User A registers, creates/publishes a quest. User B discovers, joins and complet
 - **M5 Operations:** cloud, CI/CD, monitoring, backups, secure configuration.
 - **M6 Release:** profiling, load tests, accessibility, release docs.
 - **Advanced:** geo-quests, offline sync, AI, event streaming experiments.
+
+## Design-first implementation gate
+Sprint 0 gaming UI/UX design is tracked in `docs/planning/SPRINT-00-DESIGN.md`. The visual rules, user flows, design tokens and wireframe blueprint live under `docs/design/`. Quest CRUD and product-feature UI development begin only after UX-001 through UX-006 are reviewed and signed off; existing local setup and health testing may continue.
