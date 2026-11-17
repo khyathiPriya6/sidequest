@@ -30,3 +30,8 @@ For every issue: read specification → design → share preview → review → 
 - Editable canvas: 6 desktop screen frames, 6 mobile screen frames, gaming foundations board with seven reusable component examples, and 3 user-journey diagrams.
 - **Review status:** Draft created; product-owner visual review and UX-001 through UX-006 sign-off are still required. These are initial design compositions, not a fully validated interactive prototype.
 - Screen node references: Desktop Explore `1:2`, Desktop Details `1:65`, Desktop Create `1:99`; Mobile Explore `2:2`, Mobile Details `2:42`, Mobile Create `2:72`.
+
+## Prototype progress (Nov 15, 2026)
+- Interactive desktop/mobile Explorer and Creator click paths have been wired in Figma: https://www.figma.com/design/0lh9h3dvhB3ndoLB1RvUNT
+- Added seven transitional states per device class; verified Figma node navigation links.
+- [Prototype review / known gaps](../design/PROTOTYPE-REVIEW.md). Do not close UX-006 until the owner plays through and approves the prototype. Final cleanup and visual QA are outstanding due to the Figma Starter tool-call limit.
