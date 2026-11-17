@@ -27,6 +27,10 @@ flowchart TD
 `GET /api/v1/health` -> `{"status":"UP","service":"sidequest-api"}`
 Later: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/quests`, `GET /api/v1/quests/{id}`, `POST /api/v1/quests`, `PATCH /api/v1/quests/{id}`, publish, join, complete, and profile progress endpoints.
 
+The proposed Quest fields, lifecycle, validation, ownership rules, and API shapes are documented in [the SQ-008 Quest contract](./QUEST-CONTRACT.md). That design does not implement APIs or migrations and depends on identity work before protected endpoints can ship.
+
+Shared REST, error, pagination, timestamp, and OpenAPI planning conventions are documented in [API conventions](./API-CONVENTIONS.md); these remain a proposed baseline pending review before CRUD implementation.
+
 ## Security
 Sprint 1 health endpoint is public. Protected business endpoints are not released until identity/authorization are implemented. Authentication token/storage choice must be documented in an ADR.
 
