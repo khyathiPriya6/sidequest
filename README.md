@@ -7,6 +7,7 @@ A playful, cross-platform adventure platform for discovering, creating, joining 
 - [Project requirements](docs/requirements/PRD.md)
 - [Architecture](docs/architecture/ARCHITECTURE.md)
 - [Sprint 01 plan](docs/planning/SPRINT-01.md)
+- [Frontend foundation and design handoff](docs/design/FRONTEND-FOUNDATION.md)
 - [Architecture decisions](docs/decisions/0001-modular-monolith.md)
 - [Coding agent instructions](AGENTS.md)
 - [GitHub issues / backlog](https://github.com/khyathiPriya6/sidequest/issues)
@@ -34,5 +35,7 @@ A playful, cross-platform adventure platform for discovering, creating, joining 
 The UI and API are in `ui/` and `backend/`. Follow [backend setup](backend/README.md) first, then [UI setup](ui/README.md). The UI calls `/api/v1/health` through Vite's configurable proxy and displays loading, online, and retryable error states. Local backend startup and PostgreSQL authentication have been verified with the ignored local configuration; no credentials are committed.
 
 Related integration issue: [SQ-004 / #15](https://github.com/khyathiPriya6/sidequest/issues/15).
+
+The [SQ-019 foundation](https://github.com/khyathiPriya6/sidequest/issues/36) adds the dark gaming theme, route shell, responsive navigation, and reusable controls. Run the UI and visit `/dev/components` for a development-only component gallery. Quest CRUD and full product screens remain gated by [UX-006 prototype review](https://github.com/khyathiPriya6/sidequest/issues/35).
 
 > Never commit credentials or claim tests ran without evidence. See `AGENTS.md`.

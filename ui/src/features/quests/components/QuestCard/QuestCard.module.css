@@ -1,0 +1,7 @@
+.card { display: flex; flex-direction: column; height: 100%; gap: var(--space-4); }
+.badges { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.link { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); min-height: 44px; color: var(--color-text); text-decoration: none; }
+.link svg { flex: 0 0 auto; color: var(--color-secondary); }
+.link:hover { color: var(--color-secondary); text-decoration: underline; }
+.artwork { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-input); }
+.reward { margin-top: auto; padding-top: var(--space-3); }

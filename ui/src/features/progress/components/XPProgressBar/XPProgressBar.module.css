@@ -1,0 +1,6 @@
+.container { display: grid; gap: var(--space-3); }
+.labels { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); color: var(--color-muted); font-size: var(--text-sm); }
+.progress { display: block; width: 100%; height: .625rem; appearance: none; border: 0; border-radius: var(--radius-input); overflow: hidden; background: var(--color-bg); accent-color: var(--color-reward); }
+.progress::-webkit-progress-bar { background: var(--color-bg); }
+.progress::-webkit-progress-value { background: var(--color-reward); border-radius: var(--radius-input); }
+.progress::-moz-progress-bar { background: var(--color-reward); }
