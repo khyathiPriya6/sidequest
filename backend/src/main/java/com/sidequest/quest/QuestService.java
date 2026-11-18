@@ -51,10 +51,38 @@ class QuestService {
     VersionedQuest patch(UUID creatorId, UUID id, String ifMatch, QuestDtos.PatchDraft request) {
         Quest quest = ownedQuest(creatorId, id);
         if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
-        requireCurrentEtag(ifMatch, quest.getVersion());
+        requireCurrentVersion(ifMatch, quest.getVersion());
         QuestDraftValidator.DraftValues values = QuestDraftValidator.patch(quest, request);
         quest.updateDraft(values.title(), values.description(), values.category(),
                 values.difficulty(), values.rewardXp());
+        quests.flush();
+        return versioned(quest);
+    }
+
+    @Transactional
+    VersionedQuest publish(UUID creatorId, UUID id, String ifMatch) {
+        Quest quest = ownedQuest(creatorId, id);
+        long suppliedVersion = parseIfMatch(ifMatch);
+        if (quest.getStatus() == QuestStatus.PUBLISHED) return versioned(quest);
+        if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
+        requireCurrentVersion(suppliedVersion, quest.getVersion());
+        var errors = QuestDraftValidator.publicationErrors(quest);
+        if (!errors.isEmpty()) throw QuestApiFailure.validation(errors);
+        quest.publish();
+        quests.flush();
+        return versioned(quest);
+    }
+
+    @Transactional
+    VersionedQuest archive(UUID creatorId, UUID id, String ifMatch) {
+        Quest quest = ownedQuest(creatorId, id);
+        long suppliedVersion = parseIfMatch(ifMatch);
+        if (quest.getStatus() == QuestStatus.ARCHIVED) return versioned(quest);
+        if (quest.getStatus() != QuestStatus.DRAFT && quest.getStatus() != QuestStatus.PUBLISHED) {
+            throw QuestApiFailure.conflict();
+        }
+        requireCurrentVersion(suppliedVersion, quest.getVersion());
+        quest.archive();
         quests.flush();
         return versioned(quest);
     }
@@ -68,7 +96,15 @@ class QuestService {
         return quests.findByIdAndCreator_Id(id, creatorId).orElseThrow(QuestApiFailure::notFound);
     }
 
-    private static void requireCurrentEtag(String ifMatch, long version) {
+    private static void requireCurrentVersion(String ifMatch, long version) {
+        requireCurrentVersion(parseIfMatch(ifMatch), version);
+    }
+
+    private static void requireCurrentVersion(long supplied, long current) {
+        if (supplied != current) throw QuestApiFailure.preconditionFailed(etag(current));
+    }
+
+    private static long parseIfMatch(String ifMatch) {
         if (ifMatch == null) throw QuestApiFailure.preconditionRequired();
         if (!ifMatch.matches("\"(0|[1-9][0-9]*)\"")) {
             throw QuestApiFailure.badRequest("invalid_if_match",
@@ -81,7 +117,7 @@ class QuestService {
             throw QuestApiFailure.badRequest("invalid_if_match",
                     "If-Match must contain one strong quest ETag.");
         }
-        if (supplied != version) throw QuestApiFailure.preconditionFailed(etag(version));
+        return supplied;
     }
 
     private static VersionedQuest versioned(Quest quest) {

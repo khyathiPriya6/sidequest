@@ -52,4 +52,22 @@ public class QuestController {
         QuestService.VersionedQuest quest = service.ownerQuest(principal.userId(), id);
         return ResponseEntity.ok().eTag(quest.etag()).body(quest.body());
     }
+
+    @PostMapping("/api/v1/quests/{id}/publish")
+    ResponseEntity<QuestDtos.QuestView> publish(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        QuestService.VersionedQuest quest = service.publish(principal.userId(), id, ifMatch);
+        return ResponseEntity.ok().eTag(quest.etag()).body(quest.body());
+    }
+
+    @PostMapping("/api/v1/quests/{id}/archive")
+    ResponseEntity<QuestDtos.QuestView> archive(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        QuestService.VersionedQuest quest = service.archive(principal.userId(), id, ifMatch);
+        return ResponseEntity.ok().eTag(quest.etag()).body(quest.body());
+    }
 }

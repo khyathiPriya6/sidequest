@@ -89,6 +89,25 @@ public class Quest {
         this.rewardXp = validateRewardXp(rewardXp);
     }
 
+    void publish() {
+        if (status != QuestStatus.DRAFT) {
+            throw new IllegalStateException("Only a draft quest can be published");
+        }
+        if (description == null || category == null || difficulty == null || rewardXp == null) {
+            throw new IllegalStateException("A quest must satisfy publication requirements");
+        }
+        status = QuestStatus.PUBLISHED;
+        publishedAt = Instant.now();
+    }
+
+    void archive() {
+        if (status != QuestStatus.DRAFT && status != QuestStatus.PUBLISHED) {
+            throw new IllegalStateException("Only a draft or published quest can be archived");
+        }
+        status = QuestStatus.ARCHIVED;
+        archivedAt = Instant.now();
+    }
+
     private static String normalizeTitle(String title) {
         String normalized = Objects.requireNonNull(title, "title is required").strip();
         int length = normalized.codePointCount(0, normalized.length());

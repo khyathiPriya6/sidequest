@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: SideQuest Quest API
   version: 1.0.0
-  description: SQ-010 draft CRUD and owner-only read contract. Public catalogue and lifecycle operations are documented with their respective implementation issues.
+  description: SQ-010 draft CRUD, SQ-011 lifecycle transitions, and owner-only reads. Public catalogue operations are documented with their respective implementation issues.
 servers:
   - url: /
 paths:
@@ -61,6 +61,59 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
         '412': {$ref: '#/components/responses/Stale'}
         '422': {$ref: '#/components/responses/Invalid'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/quests/{id}/publish:
+    post:
+      operationId: publishQuest
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag. A syntactically valid stale ETag is accepted for an already-published retry.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      responses:
+        '200':
+          description: Quest published or unchanged published representation returned for an idempotent retry.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/quests/{id}/archive:
+    post:
+      operationId: archiveQuest
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag. A syntactically valid stale ETag is accepted for an already-archived retry.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      responses:
+        '200':
+          description: Draft or published quest archived; an already-archived representation is unchanged.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
         '428': {$ref: '#/components/responses/PreconditionRequired'}
   /api/v1/me/quests:
     get:

@@ -42,6 +42,23 @@ final class QuestDraftValidator {
         return new DraftValues(title, description, category, difficulty, rewardXp);
     }
 
+    static List<QuestApiFailure.FieldError> publicationErrors(Quest quest) {
+        var errors = new ArrayList<QuestApiFailure.FieldError>();
+        if (quest.getDescription() == null) {
+            errors.add(error("description", "required", "Description is required when publishing."));
+        }
+        if (quest.getCategory() == null) {
+            errors.add(error("category", "required", "Category is required when publishing."));
+        }
+        if (quest.getDifficulty() == null) {
+            errors.add(error("difficulty", "required", "Difficulty is required when publishing."));
+        }
+        if (quest.getRewardXp() == null) {
+            errors.add(error("rewardXp", "required", "XP reward is required when publishing."));
+        }
+        return List.copyOf(errors);
+    }
+
     private static String text(JsonNode node, String field, boolean nullable,
             List<QuestApiFailure.FieldError> errors) {
         if (node == null || node.isNull()) {

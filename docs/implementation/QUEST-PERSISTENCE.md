@@ -12,7 +12,7 @@ SQ-009 adds the PostgreSQL/JPA persistence foundation for the agreed Quest contr
 - PostgreSQL checks enforce title/description bounds, supported enum values, XP range, lifecycle consistency, and timestamp ordering. The creator foreign key uses `ON DELETE RESTRICT`; quests are not cascaded away with a user.
 - `quests_creator_created_idx` supports owner listings. `quests_public_created_idx` is a partial index for published-only discovery ordered by creation time and UUID.
 
-The entity is persistence/domain state only and must not be serialized as an API response. Quest controllers use explicit DTOs. SQ-010 adds authenticated draft CRUD and owner reads with server-derived creator identity, ownership-scoped queries, and version-derived ETags; lifecycle transitions and public-query behavior remain in their respective issues.
+The entity is persistence/domain state only and must not be serialized as an API response. Quest controllers use explicit DTOs. SQ-010 adds authenticated draft CRUD and owner reads with server-derived creator identity, ownership-scoped queries, and version-derived ETags. SQ-011 adds atomic publish/archive transitions; public-query behavior remains in its respective issue.
 
 ## Migration and rollback
 
