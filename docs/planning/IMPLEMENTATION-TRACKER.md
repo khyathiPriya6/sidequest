@@ -18,7 +18,7 @@ Updated 2026-11-18 from latest `main` (`63c748b`). Java 21 is preserved. No exis
 | SQ-014 #25 | Implemented and pushed on `feat/sq-014-public-ui`; [PR #52](https://github.com/khyathiPriya6/sidequest/pull/52) is open against the SQ-013 branch. | Public Explore and Quest detail screens, URL-backed search/category/difficulty/page state, loading/empty/error states, responsive layouts, and keyboard navigation are implemented and tested. Continue with SQ-015 without waiting for PR approval; do not merge on the owner's behalf. |
 | SQ-015 #26 | Implemented and pushed on `feat/sq-015-creator-dashboard`; [PR #53](https://github.com/khyathiPriya6/sidequest/pull/53) is open against the authentication UI branch. | Owner-only quest dashboard, status filters, pagination, draft edit navigation, published/archived read navigation, loading/empty/error states. Authentication UI dependency integrated. |
 | SQ-016 #27 | Implemented and pushed on `feat/sq-016-draft-form`; [PR #54](https://github.com/khyathiPriya6/sidequest/pull/54) is open against the SQ-015 branch. | Protected draft create/edit form, draft-only owner loading, validation, field-error mapping, unsaved state, duplicate-submit prevention, and ETag stale-update handling. |
-| SQ-017 #28 | Not started | Publish/archive UI. |
+| SQ-017 #28 | In progress on `feat/sq-017-lifecycle-ui` | Draft publish action, accessible archive confirmation, publication validation/errors, lifecycle state refresh, and repeat/conflict handling. |
 | SQ-018 #29 | Not started | Real end-to-end journey with two users and anonymous access. |
 
 ## Approval, design, and environment evidence

@@ -4,7 +4,19 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge/Badge'
 import { Button } from '../components/ui/Button/Button'
 import { Card } from '../components/ui/Card/Card'
-import { getMyQuests, displayEnum, type Quest, type QuestPage, type QuestStatus } from '../features/quests/questApi'
+import { Modal } from '../components/ui/Modal/Modal'
+import { getCsrfToken } from '../features/auth/authApi'
+import {
+  archiveQuest,
+  getMyQuests,
+  getOwnedQuest,
+  publishQuest,
+  QuestApiError,
+  displayEnum,
+  type Quest,
+  type QuestPage,
+  type QuestStatus,
+} from '../features/quests/questApi'
 import styles from './MyQuestsPage.module.css'
 
 type LoadState =
@@ -91,7 +103,7 @@ export function MyQuestsPage() {
         <Link className={styles.create} to="/quests/new"><Plus size={18} aria-hidden="true" /> Create quest</Link>
       </Card>}
       {state.kind === 'loaded' && state.page.content.length > 0 && <div className={styles.grid}>
-        {state.page.content.map(quest => <OwnedQuestCard key={quest.id} quest={quest} />)}
+        {state.page.content.map(quest => <OwnedQuestCard key={quest.id} quest={quest} onChanged={() => setAttempt(value => value + 1)} />)}
       </div>}
     </div>
 
@@ -103,8 +115,40 @@ export function MyQuestsPage() {
   </section>
 }
 
-function OwnedQuestCard({ quest }: { quest: Quest }) {
+function OwnedQuestCard({ quest, onChanged }: { quest: Quest; onChanged: () => void }) {
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [mutating, setMutating] = useState(false)
+  const [actionError, setActionError] = useState('')
   const statusTone = quest.status === 'PUBLISHED' ? 'success' : quest.status === 'ARCHIVED' ? 'neutral' : 'accent'
+
+  async function mutate(action: 'publish' | 'archive') {
+    if (mutating) return
+    setMutating(true)
+    setActionError('')
+    try {
+      const owned = await getOwnedQuest(quest.id, new AbortController().signal)
+      const csrfToken = (await getCsrfToken()).csrfToken
+      if (action === 'publish') await publishQuest(quest.id, owned.etag, csrfToken)
+      else await archiveQuest(quest.id, owned.etag, csrfToken)
+      setArchiveOpen(false)
+      onChanged()
+    } catch (error) {
+      if (error instanceof QuestApiError) {
+        setActionError(error.status === 422
+          ? 'Complete the publication fields before publishing.'
+          : error.status === 412
+            ? 'This quest changed in another tab or session. Reload before retrying.'
+            : error.status === 409
+              ? 'This action is not valid for the current quest state.'
+              : error.message)
+      } else {
+        setActionError(error instanceof Error ? error.message : 'Unable to update this quest.')
+      }
+    } finally {
+      setMutating(false)
+    }
+  }
+
   return <article aria-label={quest.title}>
     <Card className={styles.card}>
       <div className={styles.badges}>
@@ -122,6 +166,18 @@ function OwnedQuestCard({ quest }: { quest: Quest }) {
       </h2>
       <p>{quest.description || 'No description available.'}</p>
       {quest.rewardXp !== null && <Badge tone="reward">{quest.rewardXp} XP reward</Badge>}
+      {quest.status !== 'ARCHIVED' && <div className={styles.actions}>
+        {quest.status === 'DRAFT' && <Button size="small" loading={mutating} onClick={() => void mutate('publish')}>Publish</Button>}
+        <Button size="small" variant="destructive" onClick={() => setArchiveOpen(true)}>Archive</Button>
+      </div>}
+      {actionError && <p className={styles.actionError} role="alert">{actionError}</p>}
+      <Modal open={archiveOpen} onOpenChange={setArchiveOpen} title="Archive this quest?"
+        description="The quest will leave public discovery. You can keep its draft or publication history in My quests.">
+        <div className={styles.modalActions}>
+          <Button variant="secondary" onClick={() => setArchiveOpen(false)}>Cancel</Button>
+          <Button variant="destructive" loading={mutating} onClick={() => void mutate('archive')}>Confirm archive</Button>
+        </div>
+      </Modal>
     </Card>
   </article>
 }

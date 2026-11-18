@@ -8,6 +8,7 @@ import {
   createQuestDraft,
   getOwnedQuest,
   updateQuestDraft,
+  publishQuest,
   QuestApiError,
   type QuestCategory,
   type QuestDifficulty,
@@ -143,6 +144,34 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     }
   }
 
+  async function publish() {
+    if (mode !== 'edit' || saving) return
+    setSaving(true)
+    setSaveError('')
+    try {
+      const csrfToken = (await getCsrfToken()).csrfToken
+      const result = await publishQuest(id, etag, csrfToken)
+      setEtag(result.etag)
+      setSaved(true)
+      navigate(`/quests/${encodeURIComponent(result.quest.id)}`, { replace: true })
+    } catch (error) {
+      if (error instanceof QuestApiError) {
+        setSaveError(error.status === 422
+          ? 'This quest is not ready to publish. Complete the required fields below.'
+          : error.status === 412
+            ? 'This draft changed in another tab or session. Reload it before publishing.'
+            : error.status === 409
+              ? 'This quest cannot be published from its current state.'
+              : error.message)
+        setFieldErrors(Object.fromEntries(error.fieldErrors.map(item => [item.field, item.message])))
+      } else {
+        setSaveError(error instanceof Error ? error.message : 'Unable to publish this quest.')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) return <Card className={styles.state} role="status">Loading draft…</Card>
   if (loadError) return <Card className={styles.state} role="alert">
     <h1>Draft unavailable</h1>
@@ -197,7 +226,10 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
         <span aria-live="polite" className={styles.status}>
           {saving ? 'Saving…' : saved ? 'Saved' : dirty ? 'Unsaved changes' : 'No unsaved changes'}
         </span>
-        <Button type="submit" loading={saving}>{mode === 'create' ? 'Save draft' : 'Save changes'}</Button>
+        <div className={styles.actionButtons}>
+          {mode === 'edit' && <Button variant="secondary" type="button" loading={saving} onClick={() => void publish()}>Publish quest</Button>}
+          <Button type="submit" loading={saving}>{mode === 'create' ? 'Save draft' : 'Save changes'}</Button>
+        </div>
       </div>
     </form>
   </section>
