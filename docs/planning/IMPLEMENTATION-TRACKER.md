@@ -11,7 +11,7 @@ Updated 2026-11-18 from latest `main` (`63c748b`). Java 21 is preserved. No exis
 | Authentication APIs #43 / PR #47 | Integrated on `feat/e03-authentication-main-integration` over the #42 integration branch. | PR #50 is open against the #42 integration branch. |
 | Authentication UI #44 | Implemented on `feat/e03-auth-ui`; PR #51 is open against the authentication integration branch. | Real-backend auth browser coverage passed; do not merge on the owner's behalf. |
 | SQ-009 #20 / PR #48 | Merged into `main` at `63c748b` | Complete. |
-| SQ-010 #21 | Implemented on `feat/sq-010-draft-api`; PR creation pending push. | Draft CRUD, owner list/detail, validation, privacy, pagination, CSRF, and ETag behavior tested on isolated PostgreSQL. |
+| SQ-010 #21 | Implemented and pushed on `feat/sq-010-draft-api`; PR creation is pending authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/e03-authentication-main-integration...feat/sq-010-draft-api?expand=1). Draft CRUD, owner list/detail, validation, privacy, pagination, CSRF, and ETag behavior tested on isolated PostgreSQL. |
 | SQ-011 #22 | Not started | Publish/archive transitions with validation, idempotency, and concurrency tests. |
 | SQ-012/013 #23–24 | Not started | Public catalogue/detail, search/filter, bounded pagination and visibility tests. |
 | SQ-014 #25 | Not started | Responsive Explore/detail pages using real APIs and URL-backed filters. |
