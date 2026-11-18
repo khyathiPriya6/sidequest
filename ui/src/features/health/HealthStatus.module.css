@@ -1,0 +1,5 @@
+.status { display: grid; justify-items: start; gap: var(--space-3); padding-block: var(--space-3); color: var(--color-muted); font-size: var(--text-sm); }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: var(--space-2); border-radius: 50%; }
+.loading { background: var(--color-reward); }
+.online { background: var(--color-success); }
+.offline { background: var(--color-danger); }

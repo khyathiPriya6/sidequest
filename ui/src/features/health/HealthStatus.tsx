@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../../components/ui/Button/Button'
+import styles from './HealthStatus.module.css'
 
 type Connection = 'loading' | 'online' | 'offline'
 
@@ -41,15 +43,15 @@ export default function HealthStatus() {
   }, [attempt])
 
   return (
-    <div className="api-status">
+    <div className={styles.status}>
       <span role="status" aria-live="polite">
-        <span className={`status-dot ${connection}`} aria-hidden="true" />
+        <span className={`${styles.dot} ${styles[connection]}`} aria-hidden="true" />
         {connection === 'loading' ? 'Connecting to API…'
           : connection === 'online' ? 'API online'
             : 'Unable to reach the API. Please try again.'}
       </span>
       {connection === 'offline' && (
-        <button type="button" onClick={() => setAttempt(value => value + 1)}>Retry connection</button>
+        <Button variant="secondary" size="small" onClick={() => setAttempt(value => value + 1)}>Retry connection</Button>
       )}
     </div>
   )

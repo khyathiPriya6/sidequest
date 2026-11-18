@@ -1,0 +1,7 @@
+.page, .section { display: grid; justify-items: stretch; gap: var(--space-6); min-width: 0; }
+.page { gap: var(--space-12); }
+.section > button { justify-self: start; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+@media (max-width: 75rem) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 40rem) { .grid { grid-template-columns: minmax(0, 1fr); } }
