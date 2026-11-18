@@ -4,15 +4,8 @@ import { ExploreShell } from '../pages/ExploreShell'
 import { QuestDetailPage } from '../pages/QuestDetailPage'
 import { FeaturePlaceholder } from '../pages/FeaturePlaceholder'
 import { NotFoundPage } from '../pages/NotFoundPage'
-
-const placeholders = [
-  { path: '/quests/new', title: 'Create a quest', description: 'Quest creation will be available after sign-in is ready.' },
-  { path: '/quests/:id/edit', title: 'Edit a quest', description: 'Editing your own quest drafts will be available soon.' },
-  { path: '/my-quests', title: 'My quests', description: 'Your quest log will be available after sign-in is ready.' },
-  { path: '/profile', title: 'Your profile', description: 'Your profile and earned progress will be available after sign-in is ready.' },
-  { path: '/login', title: 'Sign in', description: 'Sign-in is not available yet. You can return to Explore while we get things ready.' },
-  { path: '/register', title: 'Create an account', description: 'Registration is not available yet. Check back soon.' },
-]
+import { AuthPage } from '../features/auth/AuthPage'
+import { RequireAuth } from '../features/auth/RequireAuth'
 
 export function createAppRoutes(): RouteObject[] {
   return [
@@ -22,7 +15,18 @@ export function createAppRoutes(): RouteObject[] {
         { path: '/', element: <Navigate to="/quests" replace /> },
         { path: '/quests', element: <ExploreShell />, handle: { title: 'Explore' } },
         { path: '/quests/:id', element: <QuestDetailPage />, handle: { title: 'Quest details' } },
-        ...placeholders.map(({ path, title, description }) => ({ path, handle: { title }, element: <FeaturePlaceholder title={title} description={description} /> })),
+        { path: '/login', element: <AuthPage mode="login" />, handle: { title: 'Sign in' } },
+        { path: '/register', element: <AuthPage mode="register" />, handle: { title: 'Create an account' } },
+        {
+          element: <RequireAuth />,
+          children: [
+            { path: '/quests/new', handle: { title: 'Create a quest' }, element: <FeaturePlaceholder title="Create a quest" description="Quest creation will be available soon." /> },
+            { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <FeaturePlaceholder title="Edit a quest" description="Editing your own quest drafts will be available soon." /> },
+            { path: '/my-quests', handle: { title: 'My quests' }, element: <FeaturePlaceholder title="My quests" description="Your quest log will be available soon." /> },
+            { path: '/my/quests', element: <Navigate to="/my-quests" replace /> },
+            { path: '/profile', handle: { title: 'Your profile' }, element: <FeaturePlaceholder title="Your profile" description="Your profile and earned progress will be available after sign-in is ready." /> },
+          ],
+        },
         { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } },
       ],
     },
