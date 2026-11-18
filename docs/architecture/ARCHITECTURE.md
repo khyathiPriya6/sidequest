@@ -31,6 +31,8 @@ The proposed Quest fields, lifecycle, validation, ownership rules, and API shape
 
 Shared REST, error, pagination, timestamp, and OpenAPI planning conventions are documented in [API conventions](./API-CONVENTIONS.md); these remain a proposed baseline pending review before CRUD implementation.
 
+The proposed E03 authentication mechanism and route/security boundaries are documented in [ADR 0002](../decisions/0002-authentication-and-sessions.md) and the [authentication API contract](./AUTH-CONTRACT.md). Both are pending owner approval; no authentication implementation is included.
+
 ## Security
 Sprint 1 health endpoint is public. Protected business endpoints are not released until identity/authorization are implemented. Authentication token/storage choice must be documented in an ADR.
 
