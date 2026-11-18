@@ -1,10 +1,10 @@
 # E03 — Authentication API and security boundaries
 
-**Status:** Proposed; pending approval of [ADR 0002](../decisions/0002-authentication-and-sessions.md)
+**Status:** Core session architecture approved; username and registration policy details remain open
 **Issue:** [#39 — E03-ARCH](https://github.com/khyathiPriya6/sidequest/issues/39)
 **Scope:** Contract proposal only; no endpoints or security configuration are implemented.
 
-This contract assumes the proposed server-side session design in ADR 0002. If the owner selects JWTs or another mechanism, revise cookie, CSRF, expiration, and logout contracts before implementation.
+This contract assumes the owner-approved server-side session design in ADR 0002. Cookie, CSRF, expiration, and logout details are approved; update this document if the architecture changes.
 
 ## Route access matrix
 
@@ -30,7 +30,7 @@ Safe methods (`GET`, `HEAD`, `OPTIONS`) must not mutate domain state. The CSRF b
 
 The exact user/profile fields depend on the owner-approved users schema. Do not include password hashes, account status internals, session identifiers, roles, or CSRF tokens in the current-user representation.
 
-Registration (username is unresolved; shown only to expose the brief/UI mismatch):
+Registration (required username; format and canonicalization are still to be approved):
 
 ```http
 POST /api/v1/auth/register
@@ -39,11 +39,12 @@ X-CSRF-TOKEN: <csrf-token>
 
 {
   "email": "explorer@example.test",
+  "username": "quest-maker",
   "password": "<user-supplied password>"
 }
 ```
 
-Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. If username is approved, add it to the request only after the registration UI contract is updated.
+Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. The registration UI design must include the approved username field before UI implementation.
 
 Login:
 
@@ -115,18 +116,18 @@ Never log passwords, password hashes, session cookies/IDs, CSRF tokens, authoriz
 
 ## Users schema dependency (not a migration)
 
-The implementation must define and migrate a `users` table before protected identity and Quest writes ship. The implementation brief requests an identifier, email, username, password hash, account status, and timestamps; the PRD/auth wireframe currently specify email/password and no username field. Resolve that mismatch before freezing the registration DTO.
+The implementation must define and migrate a `users` table before protected identity and Quest writes ship. The owner approved a required username, but the PRD/auth wireframe still need a design update before UI implementation. Resolve username format/canonicalization before freezing the DTO.
 
 At minimum, the schema design must specify:
 
 - Stable primary key type compatible with the `quests.creator_id` foreign key.
 - Normalized email and a database uniqueness constraint/index.
-- Whether username is required; if present, normalization and uniqueness must be explicit.
+- Required unique username; format, normalization, and uniqueness semantics must be explicit.
 - Password hash storage only (no reversible password field).
 - Active/disabled account state, creation/update timestamps, and behavior on disable.
 - A session repository schema and cleanup/expiry policy if ADR 0002 is approved.
 
-The current user-schema proposal uses a UUID ID, normalized unique email, active/disabled status, password hash, and UTC created/updated timestamps. Username remains unresolved because the implementation brief requests it while the PRD and auth wireframe do not. Proposed password hashing is Argon2id via Spring Security's `DelegatingPasswordEncoder` and Bouncy Castle provider, pending owner approval.
+The current user-schema proposal uses a UUID ID, normalized unique email, required unique username, active/disabled status, password hash, and UTC created/updated timestamps. Username format/canonicalization remains unresolved. The approved password-hash direction is Argon2id via Spring Security's `DelegatingPasswordEncoder` and Bouncy Castle provider.
 
 Do not run schema changes against an existing database without explicit approval.
 
@@ -139,8 +140,8 @@ Do not run schema changes against an existing database without explicit approval
 
 ## Approval checklist
 
-- [ ] Approve authentication/session mechanism and cookie/CSRF assumptions.
-- [ ] Approve API route list, status codes, and session behaviors.
-- [ ] Resolve username requirement and align design before frontend integration.
-- [ ] Approve account activation, duplicate-account, and login error policies.
-- [ ] Approve session duration and revocation policy in ADR 0002.
+- [x] Approve authentication/session mechanism, cookie/CSRF assumptions, and session behavior.
+- [ ] Review API route list, status codes, duplicate-account, and throttling policies.
+- [x] Resolve username as required; [ ] finalize username format and align registration design before frontend integration.
+- [x] Approve immediate account activation; [ ] finalize duplicate-account and abuse-throttling behavior.
+- [x] Approve session duration and revocation policy in ADR 0002.

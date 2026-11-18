@@ -1,6 +1,6 @@
 # ADR 0002 — Authentication and session architecture
 
-**Status:** Proposed; pending owner approval
+**Status:** Core architecture approved by product owner on 2026-11-17; PR #40 review/merge pending
 **Issue:** [#39 — E03-ARCH](https://github.com/khyathiPriya6/sidequest/issues/39)
 **Scope:** Architecture proposal only. No security dependency, endpoint, user schema, session table, or UI is implemented by this ADR.
 
@@ -10,7 +10,7 @@ SideQuest is a web-first product with one Spring Boot modular-monolith API, a Re
 
 The Quest contract requires the server to assign the creator from an authenticated principal and enforce owner-only operations. It does not choose how a principal is authenticated.
 
-## Decision proposed
+## Decision
 
 Use **server-side opaque sessions** rather than JWT access/refresh tokens for the MVP.
 
@@ -20,7 +20,7 @@ Use **server-side opaque sessions** rather than JWT access/refresh tokens for th
 - Return CSRF tokens separately from session credentials and require them for cookie-authenticated unsafe methods.
 - Enforce authentication and account status on the server. Resolve a stable user ID from the Spring Security principal and pass it to domain services; never accept an owner ID from request data.
 
-This ADR remains a proposal until the owner approves or changes the mechanism and the session policies in the approval checklist.
+The product owner approved the session mechanism and session policies listed below on 2026-11-17. This documentation change does not implement authentication. The remaining registration-error/throttling and username-format details must be settled before their implementation; PR #40 still requires repository review/merge.
 
 ## Alternatives considered
 
@@ -68,13 +68,13 @@ Proposed initial limits are **30 minutes idle** and **12 hours absolute**. The i
 ### Passwords and account behavior
 
 - Store only an adaptive password hash, never plaintext or reversible encrypted passwords. Proposed implementation is Spring Security's `DelegatingPasswordEncoder` with Argon2id for new hashes and an upgrade path for future algorithms. Spring's Argon2 encoder requires the Bouncy Castle provider; add it only after this ADR is approved. Configure memory/time parameters using current OWASP guidance and benchmark without claiming an unmeasured performance target.
-- Proposed password validation is 12–128 Unicode code points, with no arbitrary composition rules and no silent truncation. Enforce the limit before hashing and reject oversized JSON bodies. These are policy proposals, not yet owner-approved requirements.
+- Approved password validation is 12–128 Unicode code points, with no arbitrary composition rules and no silent truncation. Enforce the limit before hashing and reject oversized JSON bodies.
 - Treat passwords as exact input: do not trim, case-fold, or normalize them; enforce the proposed length limit before hashing.
 - Login failure responses use the same generic `401` shape for unknown email, wrong password, and disabled account.
 - Registration activates the account and creates a session on success; email verification and password recovery are not in the MVP requirements. Duplicate-account responses use a generic `409` message rather than returning an account record. This reduces detail in the response but cannot eliminate all account-enumeration risk; rate-limit registration/login at the application or deployment boundary without introducing unapproved infrastructure.
 - Normalize email consistently before comparison and enforce uniqueness in the database. Do not apply provider-specific transformations such as removing dots or plus tags.
-- The supplied implementation brief requests a `username`, but the PRD and auth wireframe currently specify only email/password. Do not implement the extra field or change registration UI until the owner resolves this contract mismatch.
-- The proposed user schema uses a UUID ID, normalized unique email, password hash, `ACTIVE`/`DISABLED` status, and UTC created/updated timestamps. Username remains unresolved pending the product/UI decision.
+- The product owner approved a required unique username on 2026-11-17. The PRD and auth wireframe still need to be updated before registration UI implementation; username validation and canonicalization details remain to be confirmed.
+- The proposed user schema uses a UUID ID, normalized unique email, unique username, password hash, `ACTIVE`/`DISABLED` status, and UTC created/updated timestamps.
 
 ## Principal and authorization boundary
 
@@ -95,7 +95,7 @@ Proposed initial limits are **30 minutes idle** and **12 hours absolute**. The i
 ## Dependencies and rollout order
 
 1. Owner approves this ADR's mechanism and security policy, or requests changes.
-2. E03 defines the users fields, uniqueness/canonicalization rules, account-state semantics, and migration. The `username` conflict with the current UI requirements must be resolved.
+2. E03 defines the users fields, uniqueness/canonicalization rules, account-state semantics, and migration. Update the registration design to include the owner-approved username field and finalize its format.
 3. Add Spring Security and the approved session repository in its own implementation issue; protect the API deny-by-default while retaining public health and public published Quest reads.
 4. Implement registration/login/logout/current-user contracts and security tests.
 5. Integrate the browser UI only after the frontend-foundation PR #37 is reviewed/merged and the approved login/register design is available.
@@ -105,15 +105,15 @@ No schema, session persistence, or protected business API is implemented in this
 
 ## Approval checklist
 
-- [ ] Approve server-side opaque sessions instead of JWT for the MVP.
-- [ ] Approve PostgreSQL-backed session storage without Redis.
-- [ ] Approve browser cookie + CSRF approach and same-origin deployment expectation.
-- [ ] Approve proposed 30-minute idle / 12-hour absolute session limits.
-- [ ] Approve session behavior: login rotation, current-session logout, multiple sessions, and disable-account revocation.
-- [ ] Approve registration activation without email verification/password recovery in MVP.
-- [ ] Resolve whether username is required, optional, or excluded; the current UI spec says email/password only.
-- [ ] Approve Argon2id provider/dependency and the proposed 12–128 code-point password bounds.
-- [ ] Approve duplicate-registration response and abuse-throttling policy.
+- [x] Approve server-side opaque sessions instead of JWT for the MVP.
+- [x] Approve PostgreSQL-backed session storage without Redis.
+- [x] Approve browser cookie + CSRF approach and same-origin deployment expectation.
+- [x] Approve proposed 30-minute idle / 12-hour absolute session limits.
+- [x] Approve session behavior: login rotation, current-session logout, multiple sessions, and disable-account revocation.
+- [x] Approve registration activation without email verification/password recovery in MVP.
+- [x] Approve required unique username; registration design still needs a username field.
+- [x] Approve Argon2id provider/dependency and the proposed 12–128 code-point password bounds.
+- [ ] Approve username format/canonicalization and duplicate-registration/throttling policy.
 
 ## Learning notes
 
