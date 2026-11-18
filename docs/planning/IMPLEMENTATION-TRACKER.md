@@ -10,7 +10,7 @@ Updated 2026-11-18 against `origin/main` at `d0e57806417d91819b431bf7cc1984a3a25
 | Session security #42 / PR #46 | GitHub marks merged, but PR base was `feat/e03-user-persistence`; its runtime code is not in current `main`. | Integrate the security changes into `main` before relying on them there. |
 | Authentication APIs #43 / PR #47 | GitHub marks merged, but PR base was `feat/e03-session-security`; its runtime code is not in current `main`. | Integrate the API changes into `main` before frontend integration. |
 | Authentication UI #44 | Not started | Depends on #43 runtime being available on the target branch and the registration design/UX handoff. No production auth UI exists. |
-| SQ-009 #20 | In progress on `feat/sq-009-quest-persistence` | Implement migration/entity/repository and isolated PostgreSQL evidence. No Quest APIs or UI are part of this issue. |
+| SQ-009 #20 | PR #48 open for review on `feat/sq-009-quest-persistence` | Migration/entity/repository implemented and validated against isolated PostgreSQL. No Quest APIs or UI are part of this issue. |
 | SQ-010–013 #21–24 | Not started | Depend on Quest persistence; protected API work also needs auth runtime available on `main`. The existing UX handoff gate applies to Quest CRUD/product UI. |
 | SQ-014–017 #25–28 | Not started | Depend on their APIs and, for authenticated views, auth UI. UX-001–006 sign-off remains outstanding in GitHub. |
 | SQ-018 #29 | Not started | Depends on #20–28 and the real browser auth flow; no Quest E2E journey has run. |
