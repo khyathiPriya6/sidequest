@@ -2,8 +2,13 @@ import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 test.beforeEach(async ({ page }) => {
-  // Component/browser tests use a deterministic health response; live proxy is checked separately.
+  // Component/browser tests use deterministic API responses; live proxy is checked separately.
   await page.route('**/api/v1/health', route => route.fulfill({ json: { status: 'UP', service: 'sidequest-api' } }))
+  await page.route('**/api/v1/auth/csrf', route => route.fulfill({ json: { csrfToken: 'test-token' } }))
+  await page.route('**/api/v1/auth/me', route => route.fulfill({
+    status: 401,
+    json: { status: 401, title: 'Unauthorized', detail: 'Authentication is required.', code: 'unauthenticated' },
+  }))
   await page.route('**/api/v1/quests**', route => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/v1/quests/quest-e2e') {

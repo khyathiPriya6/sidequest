@@ -1,5 +1,6 @@
 export type QuestCategory = 'ADVENTURE' | 'CREATIVITY' | 'FITNESS' | 'LEARNING' | 'FOOD' | 'SOCIAL'
 export type QuestDifficulty = 'EASY' | 'MEDIUM' | 'HARD'
+export type QuestStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 const questCategories: readonly string[] = ['ADVENTURE', 'CREATIVITY', 'FITNESS', 'LEARNING', 'FOOD', 'SOCIAL']
 const questDifficulties: readonly string[] = ['EASY', 'MEDIUM', 'HARD']
 
@@ -128,6 +129,12 @@ export function getPublishedQuests(search: string, signal: AbortSignal): Promise
 
 export function getQuest(id: string, signal: AbortSignal): Promise<Quest> {
   return request(`/api/v1/quests/${encodeURIComponent(id)}`, signal, isQuest)
+}
+
+export function getMyQuests(status: QuestStatus | '', page: number, signal: AbortSignal): Promise<QuestPage> {
+  const parameters = new URLSearchParams({ page: String(page), size: '20' })
+  if (status) parameters.set('status', status)
+  return request(`/api/v1/me/quests?${parameters}`, signal, isQuestPage)
 }
 
 export function displayEnum(value: string | null): string {
