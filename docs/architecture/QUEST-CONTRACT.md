@@ -2,13 +2,13 @@
 
 **Issue:** [#19 — SQ-008](https://github.com/khyathiPriya6/sidequest/issues/19)
 **Status:** Approved contract; SQ-008 merged in PR #38
-**Scope:** Defines the Quest contract. SQ-009 adds persistence; Quest APIs remain unimplemented.
+**Scope:** Defines the Quest contract. SQ-009 adds persistence; SQ-010 implements draft CRUD and owner reads.
 
 This contract translates the product rules into an API and persistence proposal. The requester confirmed the validation bounds, category taxonomy, transition retry behavior, private-resource response, concurrency mechanism, and error format during design review. Remaining dependencies and review gates are called out below.
 
 ## Context and design references
 
-- The API currently exposes `GET /api/v1/health`; Quest endpoints are not implemented. E03 supplies the UUID `users` table, and SQ-009 adds the Quest persistence model and migration.
+- The health and session-authentication endpoints are present in the dependent auth integration branch. SQ-010 implements draft CRUD and owner reads; lifecycle and public catalogue endpoints remain in later Quest issues. E03 supplies the UUID `users` table, and SQ-009 adds the Quest persistence model and migration.
 - The UI `QuestCard` is presentation-only and has no quest API or persistence integration. It currently uses display-case difficulty labels and an unrestricted category string; implementation should map the API enums to those labels rather than changing the API enum casing.
 - [Issue #17](https://github.com/khyathiPriya6/sidequest/issues/17) is closed, but no API-conventions artifact was present in the checkout or associated PR search. [API-CONVENTIONS.md](./API-CONVENTIONS.md) now records the baseline requested by #17; maintainers should review both documents before CRUD implementation.
 - [UI/UX specification](../design/UI-UX-SPEC.md), [design system](../design/DESIGN-SYSTEM.md), [user flows](../design/USER-FLOWS.md), and [wireframe blueprint](../design/WIREFRAMES.md) are proposed references, not final approved implementation designs. The [Figma prototype review](../design/PROTOTYPE-REVIEW.md) and [Sprint 0 gate](../planning/SPRINT-00-DESIGN.md) record owner review and accessibility sign-off as pending. This contract does not authorize Quest UI implementation.
