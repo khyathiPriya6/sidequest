@@ -2,11 +2,25 @@ openapi: 3.1.0
 info:
   title: SideQuest Quest API
   version: 1.0.0
-  description: SQ-010 draft CRUD, SQ-011 lifecycle transitions, and owner-only reads. Public catalogue operations are documented with their respective implementation issues.
+  description: SQ-010 draft CRUD, SQ-011 lifecycle transitions, SQ-012 public catalogue/details, and owner-only reads. Search filters are added in SQ-013.
 servers:
   - url: /
 paths:
   /api/v1/quests:
+    get:
+      operationId: listPublishedQuests
+      security: []
+      description: Returns published quests only, ordered by createdAt descending and then id descending.
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Published-only paginated collection; totalElements and totalPages exclude private and archived quests.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestPage'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
     post:
       operationId: createQuestDraft
       security: [{sessionCookie: [], csrfHeader: []}]
@@ -30,6 +44,22 @@ paths:
         '403': {$ref: '#/components/responses/CsrfFailure'}
         '422': {$ref: '#/components/responses/Invalid'}
   /api/v1/quests/{id}:
+    get:
+      operationId: getPublishedQuest
+      security: [{sessionCookie: []}, {}]
+      description: Published quests are public. A creator may also read their own draft or archived quest; others receive the same 404 as for a missing ID.
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+      responses:
+        '200':
+          description: Published quest or private quest owned by the authenticated creator.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
+        '404': {$ref: '#/components/responses/NotFound'}
     patch:
       operationId: updateQuestDraft
       security: [{sessionCookie: [], csrfHeader: []}]

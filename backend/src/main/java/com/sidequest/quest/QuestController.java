@@ -16,6 +16,22 @@ public class QuestController {
         this.service = service;
     }
 
+    @GetMapping("/api/v1/quests")
+    QuestDtos.QuestPage listPublic(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<Quest> quests = service.publicPage(page, size);
+        return QuestDtos.QuestPage.from(quests);
+    }
+
+    @GetMapping("/api/v1/quests/{id}")
+    ResponseEntity<QuestDtos.QuestView> getPublicOrOwned(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
+        UUID readerId = principal == null ? null : principal.userId();
+        QuestService.VersionedQuest quest = service.publicQuest(readerId, id);
+        return ResponseEntity.ok().eTag(quest.etag()).body(quest.body());
+    }
+
     @PostMapping("/api/v1/quests")
     ResponseEntity<QuestDtos.QuestView> create(
             @AuthenticationPrincipal UserPrincipal principal,

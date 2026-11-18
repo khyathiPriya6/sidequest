@@ -8,9 +8,9 @@ This contract translates the product rules into an API and persistence proposal.
 
 ## Context and design references
 
-- The health and session-authentication endpoints are present in the dependent auth integration branch. SQ-010 implements draft CRUD and owner reads; SQ-011 implements publish/archive transitions. Public catalogue endpoints remain in later Quest issues. E03 supplies the UUID `users` table, and SQ-009 adds the Quest persistence model and migration.
+- The health and session-authentication endpoints are present in the dependent auth integration branch. SQ-010 implements draft CRUD and owner reads; SQ-011 implements publish/archive transitions; SQ-012 implements public published-list/detail reads. SQ-013 adds catalogue search and filtering. E03 supplies the UUID `users` table, and SQ-009 adds the Quest persistence model and migration.
 - The UI `QuestCard` is presentation-only and has no quest API or persistence integration. It currently uses display-case difficulty labels and an unrestricted category string; implementation should map the API enums to those labels rather than changing the API enum casing.
-- [Issue #17](https://github.com/khyathiPriya6/sidequest/issues/17) is closed, but no API-conventions artifact was present in the checkout or associated PR search. [API-CONVENTIONS.md](./API-CONVENTIONS.md) now records the baseline requested by #17; maintainers should review both documents before CRUD implementation.
+- [Issue #17](https://github.com/khyathiPriya6/sidequest/issues/17) is closed. [API-CONVENTIONS.md](./API-CONVENTIONS.md) records its REST baseline, adopted by SQ-010 through SQ-012; the versioned Quest OpenAPI file records the implemented endpoints.
 - [UI/UX specification](../design/UI-UX-SPEC.md), [design system](../design/DESIGN-SYSTEM.md), [user flows](../design/USER-FLOWS.md), and [wireframe blueprint](../design/WIREFRAMES.md) are proposed references, not final approved implementation designs. The [Figma prototype review](../design/PROTOTYPE-REVIEW.md) and [Sprint 0 gate](../planning/SPRINT-00-DESIGN.md) record owner review and accessibility sign-off as pending. This contract does not authorize Quest UI implementation.
 - This follows [ADR 0001](../decisions/0001-modular-monolith.md): the Quest domain remains in the existing Spring Boot modular monolith.
 

@@ -31,20 +31,29 @@ class QuestService {
 
     @Transactional(readOnly = true)
     Page<Quest> ownerPage(UUID creatorId, QuestStatus status, int page, int size) {
-        if (page < 0 || size < 1 || size > 100) {
-            throw QuestApiFailure.badRequest("invalid_pagination",
-                    "Page must be non-negative and size must be between 1 and 100.");
-        }
-        var pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        var pageable = pageable(page, size);
         return status == null
                 ? quests.findAllByCreator_Id(creatorId, pageable)
                 : quests.findAllByCreator_IdAndStatus(creatorId, status, pageable);
     }
 
     @Transactional(readOnly = true)
+    Page<Quest> publicPage(int page, int size) {
+        return quests.findAllByStatus(QuestStatus.PUBLISHED, pageable(page, size));
+    }
+
+    @Transactional(readOnly = true)
     VersionedQuest ownerQuest(UUID creatorId, UUID id) {
         return versioned(ownedQuest(creatorId, id));
+    }
+
+    @Transactional(readOnly = true)
+    VersionedQuest publicQuest(UUID readerId, UUID id) {
+        Quest quest = quests.findByIdAndStatus(id, QuestStatus.PUBLISHED)
+                .orElseGet(() -> readerId == null ? null
+                        : quests.findByIdAndCreator_Id(id, readerId).orElse(null));
+        if (quest == null) throw QuestApiFailure.notFound();
+        return versioned(quest);
     }
 
     @Transactional
@@ -94,6 +103,15 @@ class QuestService {
 
     private Quest ownedQuest(UUID creatorId, UUID id) {
         return quests.findByIdAndCreator_Id(id, creatorId).orElseThrow(QuestApiFailure::notFound);
+    }
+
+    private static org.springframework.data.domain.Pageable pageable(int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw QuestApiFailure.badRequest("invalid_pagination",
+                    "Page must be non-negative and size must be between 1 and 100.");
+        }
+        return PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
     }
 
     private static void requireCurrentVersion(String ifMatch, long version) {
