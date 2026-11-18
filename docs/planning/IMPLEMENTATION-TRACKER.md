@@ -7,7 +7,7 @@ No existing developer database has been migrated. The untracked `ui/test-results
 |---|---|---|---|
 | User and session persistence #41 | Review pending; `feat/e03-user-persistence`; [PR #45](https://github.com/khyathiPriya6/sidequest/pull/45) | PR #40 merged. UUID users, canonical unique identities, encoded hashes, status/timestamps, JDBC session schema, isolated PostgreSQL verification | Java 21 `bash scripts/test-postgres.sh`: 1 unit + 3 integration tests passed. Owner review/merge pending. |
 | Security #42 | Review pending; `feat/e03-session-security`; [PR #46](https://github.com/khyathiPriya6/sidequest/pull/46), base #45 | #41; deny-default filter chain, Argon2id, JDBC sessions, cookies, CSRF, timeouts, account revocation, JSON errors | Java 21 isolated suite: 2 unit + 7 integration tests passed. Quest private-404 service verification deferred to Quest implementation. |
-| Authentication APIs #43 | Implemented; `feat/e03-authentication-api`; stacked PR pending | #42; registration/login/logout/me/CSRF, validation, generic conflicts/failures, bounded throttling | 5 unit + 12 integration tests passed, including actual HTTP registration/login/logout. Owner review pending. |
+| Authentication APIs #43 | Review pending; `feat/e03-authentication-api`; [PR #47](https://github.com/khyathiPriya6/sidequest/pull/47), base #46 | #42; registration/login/logout/me/CSRF, validation, generic conflicts/failures, bounded throttling | 5 unit + 12 integration tests passed, including actual HTTP registration/login/logout. Owner review pending. |
 | Authentication UI #44 | Blocked | #43; **PR #37 merge and owner-approved username/error registration design** | Session restoration, safe redirects, actual backend integration and browser tests remain. |
 | SQ-009 #20 | Blocked | Identity foundation and **UX-001–006 signoff** | Quest persistence, constraints, optimistic locking, PostgreSQL tests remain. |
 | #21 Draft APIs | Blocked; no branch/PR | #19, #20, E03; **UX-006 #35 signoff** | Create/edit, owner listings/details, draft validation and ETags. Tests not run; begin only after dependencies/gate resolve. |
@@ -48,3 +48,5 @@ Authentication learning notes and usage: [authentication API](../implementation/
 ## Remaining issues
 
 No tasks are marked owner-complete: PRs require owner review/merge. #42 private Quest concealment verification is deferred to Quest service tests. No new issues were necessary: #41–44 and #20–29 already have acceptance criteria/dependencies. Some older Quest issue prose differs from the merged contract (owner-detail route and description/requirements); follow QUEST-CONTRACT.md as requested when those stories are unblocked. Frontend source has not been changed and no frontend tests or Quest journey have run in this implementation.
+
+GitHub progress updated on issues #41, #42, #43, #44 and epic #2. Review/merge order: **#45 → #46 → #47**; retarget each child to main after its parent merges. No merge has been performed.
