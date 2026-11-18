@@ -9,7 +9,7 @@ Updated 2026-11-18 from latest `main` (`63c748b`). Java 21 is preserved. No exis
 | User/session persistence #41 / PR #45 | Merged into `main` | Isolated PostgreSQL migration tests passed. |
 | Session security #42 / PR #46 | Being integrated on `feat/e03-security-main-integration`; original PR #46 targeted a feature branch instead of `main`. PR #49 contains the mainline integration. | PR #49 is open. Private Quest 404 is verified with the protected Quest service in subsequent API tests. |
 | Authentication APIs #43 / PR #47 | Integrated on `feat/e03-authentication-main-integration` over the #42 integration branch. | PR to the #42 integration branch is open; do not merge on the owner's behalf. |
-| Authentication UI #44 | Implemented on `feat/e03-auth-ui` over the #43 integration branch. | Final UI, build, and real-backend browser checks passed; create a dedicated PR against the #43 integration branch. |
+| Authentication UI #44 | Implemented on `feat/e03-auth-ui` over the #43 integration branch. | PR #51 is open against the #43 integration branch; do not merge on the owner's behalf. |
 | SQ-009 #20 / PR #48 | Merged into `main` at `63c748b` | Complete. |
 | SQ-010 #21 | Not started | Create/edit private drafts and owner reads with security/ETag tests. |
 | SQ-011 #22 | Not started | Publish/archive transitions with validation, idempotency, and concurrency tests. |
