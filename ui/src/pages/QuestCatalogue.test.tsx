@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { createAppRoutes } from '../app/router'
 import type { Quest, QuestPage } from '../features/quests/questApi'
+import { AuthProvider } from '../features/auth/AuthContext'
 
 const publishedQuest: Quest = {
   id: 'quest-123',
@@ -39,7 +40,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 function renderAt(path: string) {
   const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] })
-  render(<RouterProvider router={router} />)
+  render(<AuthProvider><RouterProvider router={router} /></AuthProvider>)
   return router
 }
 
