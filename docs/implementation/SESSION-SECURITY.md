@@ -14,7 +14,7 @@ Spring Session 3.4.2 uses Java serialization for JDBC attributes. Only server-ge
 
 ## Verification and scope
 
-Java 21 isolated PostgreSQL suite exercises public health, denied routes, RFC 9457, anonymous CSRF failures, typed principal, exact password matching, disabled-login rejection, cookie attributes, session/CSRF rotation, JDBC restoration, 30-minute idle expiry/cleanup, 12-hour absolute expiry and disable revocation. Test-only probe controllers exercise the session primitive without adding runtime login endpoints. The actual auth APIs follow in #43. Private Quest 404 concealment is a Quest service rule; it remains unverified until that gated implementation exists. No claim is made that Quest authorization is complete.
+Java 21 isolated PostgreSQL suite exercises public health, denied routes, RFC 9457, anonymous CSRF failures, typed principal, exact password matching, disabled-login rejection, cookie attributes, session/CSRF rotation, JDBC restoration, 30-minute idle expiry/cleanup, 12-hour absolute expiry and disable revocation. The #42 PR used test-only probe controllers to exercise the session primitive. The #43 stack replaces them with real runtime auth controllers and adds an actual HTTP-server journey. Private Quest 404 concealment is a Quest service rule; it remains unverified until that gated implementation exists. No claim is made that Quest authorization is complete.
 
 ## Teach-back
 

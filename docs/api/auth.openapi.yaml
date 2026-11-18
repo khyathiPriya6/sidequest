@@ -1,0 +1,165 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Authentication API
+  version: 1.0.0
+  description: Hand-maintained runtime contract for issue 43. Same-origin cookie sessions; no JWT or browser credential storage.
+servers:
+  - url: /
+paths:
+  /api/v1/auth/csrf:
+    get:
+      operationId: getCsrfToken
+      security: []
+      responses:
+        '200':
+          description: Session-bound token; may establish an anonymous cookie session.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [csrfToken]
+                properties:
+                  csrfToken: {type: string}
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      security: [{sessionCookie: [], csrfHeader: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Registration'}
+      responses:
+        '201':
+          description: Active account and authenticated session created; session ID and CSRF token rotated.
+          headers:
+            Location:
+              schema: {type: string, const: /api/v1/auth/me}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '429': {$ref: '#/components/responses/Throttled'}
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      security: [{sessionCookie: [], csrfHeader: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Login'}
+      responses:
+        '200':
+          description: Authenticated session; session ID and CSRF token rotated.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '429': {$ref: '#/components/responses/Throttled'}
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      security: [{sessionCookie: [], csrfHeader: []}]
+      responses:
+        '204': {description: Current session invalidated and matching cookie cleared. CSRF session attribute is removed; no CSRF cookie is used.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      security: [{sessionCookie: []}]
+      responses:
+        '200':
+          description: Safe current-user summary.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CurrentUser'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-id
+      description: HttpOnly Secure SameSite=Lax Path=/, no Domain. Local-only HTTP profile uses sidequest-local-id. Anonymous sessions suffice for registration/login CSRF.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: Fetch from csrf endpoint; fetch again after successful registration/login. Not an authentication credential.
+  schemas:
+    Registration:
+      type: object
+      additionalProperties: false
+      required: [email, username, password]
+      properties:
+        email: {type: string, format: email, maxLength: 254, description: Trimmed and lowercased; provider-specific transformations are not applied.}
+        username: {type: string, pattern: '^[A-Za-z0-9_]{3,30}$', description: Stored lowercase and unique.}
+        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true, description: Unicode code points; never trim or normalize.}
+    Login:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, format: email, maxLength: 254}
+        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true}
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [id, email, username]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        username: {type: string}
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type: {type: string, const: 'about:blank'}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code: {type: string}
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: {type: string}
+              code: {type: string}
+              message: {type: string}
+  responses:
+    Malformed:
+      description: Malformed JSON or unknown request field; malformed_request.
+      content: &problemContent
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthorized:
+      description: Generic unauthenticated response for unknown account, wrong credentials, disabled account or absent/expired session.
+      content: *problemContent
+    CsrfFailure:
+      description: Missing or invalid synchronizer token; csrf_invalid. Takes precedence over authentication on unsafe requests.
+      content: *problemContent
+    Conflict:
+      description: Generic account_conflict; never discloses the duplicate field.
+      content: *problemContent
+    TooLarge:
+      description: Authentication JSON exceeds 8192 bytes; request_too_large.
+      content: *problemContent
+    Invalid:
+      description: Invalid input; validation_failed or password_length. Includes safe field errors.
+      content: *problemContent
+    Throttled:
+      description: rate_limited; default shared login/registration limits are 60 attempts per IP and 10 per normalized account per 15 minutes. Per-instance, bounded to 10000 keys; capacity exhaustion also returns 429.
+      content: *problemContent
