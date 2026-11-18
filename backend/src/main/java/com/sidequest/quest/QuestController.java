@@ -18,9 +18,12 @@ public class QuestController {
 
     @GetMapping("/api/v1/quests")
     QuestDtos.QuestPage listPublic(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) QuestCategory category,
+            @RequestParam(required = false) QuestDifficulty difficulty,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<Quest> quests = service.publicPage(page, size);
+        Page<Quest> quests = service.publicPage(q, category, difficulty, page, size);
         return QuestDtos.QuestPage.from(quests);
     }
 

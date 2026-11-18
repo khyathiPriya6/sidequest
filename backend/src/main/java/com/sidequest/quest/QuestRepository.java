@@ -8,12 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface QuestRepository extends JpaRepository<Quest, UUID> {
+public interface QuestRepository extends JpaRepository<Quest, UUID>, QuestRepositoryCustom {
     Optional<Quest> findByIdAndCreator_Id(UUID id, UUID creatorId);
 
     Optional<Quest> findByIdAndStatus(UUID id, QuestStatus status);
-
-    Page<Quest> findAllByStatus(QuestStatus status, Pageable pageable);
 
     Page<Quest> findAllByCreator_Id(UUID creatorId, Pageable pageable);
 

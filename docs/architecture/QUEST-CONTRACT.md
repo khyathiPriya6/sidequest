@@ -108,7 +108,7 @@ Content-Type: application/json
 {"title":"Explore a new walking route"}
 ```
 
-The public `q` filter is a case-insensitive substring match against title and description. `category` and `difficulty` accept the exact enum values. Public results are ordered by `createdAt` descending and then `id` descending for deterministic pagination.
+The public `q` filter is a case-insensitive literal substring match against title and description. Trim leading/trailing whitespace; a blank query means no search filter. Reject a trimmed query above 120 Unicode code points with `400`; do not truncate. Percent, underscore, and backslash are literal characters, not SQL wildcard syntax. `category` and `difficulty` accept the exact enum values; invalid values return `400`. Public results are ordered by `createdAt` descending and then `id` descending for deterministic pagination.
 
 ### Pagination
 

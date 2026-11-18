@@ -12,6 +12,16 @@ paths:
       security: []
       description: Returns published quests only, ordered by createdAt descending and then id descending.
       parameters:
+        - name: q
+          in: query
+          description: Case-insensitive literal substring in title or description. Trimmed; blank is ignored. Percent and underscore are literal.
+          schema: {type: string, maxLength: 120}
+        - name: category
+          in: query
+          schema: {$ref: '#/components/schemas/QuestCategory'}
+        - name: difficulty
+          in: query
+          schema: {$ref: '#/components/schemas/QuestDifficulty'}
         - {$ref: '#/components/parameters/Page'}
         - {$ref: '#/components/parameters/Size'}
       responses:
@@ -292,7 +302,7 @@ components:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
     InvalidParameter:
-      description: Invalid pagination or query parameter.
+      description: Invalid pagination, category/difficulty, or overlong search query.
       content: *problem
     Unauthorized:
       description: Missing or expired authenticated session.

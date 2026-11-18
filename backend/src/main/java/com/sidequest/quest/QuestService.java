@@ -2,6 +2,7 @@ package com.sidequest.quest;
 
 import com.sidequest.identity.UserRepository;
 import java.util.Optional;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,8 +39,9 @@ class QuestService {
     }
 
     @Transactional(readOnly = true)
-    Page<Quest> publicPage(int page, int size) {
-        return quests.findAllByStatus(QuestStatus.PUBLISHED, pageable(page, size));
+    Page<Quest> publicPage(
+            String query, QuestCategory category, QuestDifficulty difficulty, int page, int size) {
+        return quests.searchPublished(normalizeSearchQuery(query), category, difficulty, pageable(page, size));
     }
 
     @Transactional(readOnly = true)
@@ -112,6 +114,17 @@ class QuestService {
         }
         return PageRequest.of(page, size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+    }
+
+    private static String normalizeSearchQuery(String query) {
+        if (query == null) return null;
+        String normalized = query.strip();
+        if (normalized.isEmpty()) return null;
+        if (normalized.codePointCount(0, normalized.length()) > 120) {
+            throw QuestApiFailure.badRequest("query_too_long",
+                    "Search queries must contain at most 120 Unicode code points.");
+        }
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
     private static void requireCurrentVersion(String ifMatch, long version) {
