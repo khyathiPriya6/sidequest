@@ -23,14 +23,14 @@ mvn spring-boot:run
 
 The API listens on port `8080` by default. The PostgreSQL defaults are host `localhost`, port `5432`, database `sidequest`, and username `postgres`. Port `5432` was confirmed to accept connections. Override them with `DATABASE_URL`, or use `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` (omit `DATABASE_URL` to use the port/name values). `SERVER_PORT` changes the API port. Plain `.env` files are not loaded; use `.env.properties` as described above.
 
-The database must already exist and accept the configured user. No credentials are committed. Liquibase is enabled; its initial changelog is intentionally a no-op until an issue defines domain tables.
+The database must already exist and accept the configured user. No credentials are committed. Liquibase runs on startup and creates the identity/session and Quest tables. Do not start the app against an existing database until the owner approves that exact target and its backup; see the [migration and rollback notes](../docs/implementation/QUEST-PERSISTENCE.md) and [identity persistence notes](../docs/implementation/IDENTITY-PERSISTENCE.md).
 
 Health endpoint: `GET http://localhost:8080/api/v1/health`
 
-Run the controller contract test with `mvn test`. For a local integration check without applying Liquibase migrations, use:
+Run unit tests with `mvn test`. Run persistence and PostgreSQL integration tests against a temporary isolated cluster with:
 
 ```sh
-mvn spring-boot:run -Dspring-boot.run.arguments=--spring.liquibase.enabled=false
+JAVA_HOME=/path/to/java-21 PATH=/path/to/java-21/bin:$PATH bash scripts/test-postgres.sh
 ```
 
-This still connects to PostgreSQL. The health response reports API availability; it is not a continuous database health probe. The project targets Java 21; the current local checks used installed JDK 26.0.1 with compiler release 21.
+The test runner provisions and stops its own PostgreSQL cluster; it does not use the configured developer database. The health response reports API availability; it is not a continuous database health probe. The project targets and should run on Java 21.

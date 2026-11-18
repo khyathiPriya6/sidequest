@@ -1,14 +1,14 @@
 # SQ-008 — Quest domain and API contract
 
 **Issue:** [#19 — SQ-008](https://github.com/khyathiPriya6/sidequest/issues/19)
-**Status:** Requester-confirmed proposal; repository review and identity contract still required
-**Scope:** Design contract only. This document does not implement APIs, persistence, or migrations.
+**Status:** Approved contract; SQ-008 merged in PR #38
+**Scope:** Defines the Quest contract. SQ-009 adds persistence; Quest APIs remain unimplemented.
 
 This contract translates the product rules into an API and persistence proposal. The requester confirmed the validation bounds, category taxonomy, transition retry behavior, private-resource response, concurrency mechanism, and error format during design review. Remaining dependencies and review gates are called out below.
 
 ## Context and design references
 
-- The API currently exposes only `GET /api/v1/health`; no quest endpoints, identity model, or domain tables exist.
+- The API currently exposes `GET /api/v1/health`; Quest endpoints are not implemented. E03 supplies the UUID `users` table, and SQ-009 adds the Quest persistence model and migration.
 - The UI `QuestCard` is presentation-only and has no quest API or persistence integration. It currently uses display-case difficulty labels and an unrestricted category string; implementation should map the API enums to those labels rather than changing the API enum casing.
 - [Issue #17](https://github.com/khyathiPriya6/sidequest/issues/17) is closed, but no API-conventions artifact was present in the checkout or associated PR search. [API-CONVENTIONS.md](./API-CONVENTIONS.md) now records the baseline requested by #17; maintainers should review both documents before CRUD implementation.
 - [UI/UX specification](../design/UI-UX-SPEC.md), [design system](../design/DESIGN-SYSTEM.md), [user flows](../design/USER-FLOWS.md), and [wireframe blueprint](../design/WIREFRAMES.md) are proposed references, not final approved implementation designs. The [Figma prototype review](../design/PROTOTYPE-REVIEW.md) and [Sprint 0 gate](../planning/SPRINT-00-DESIGN.md) record owner review and accessibility sign-off as pending. This contract does not authorize Quest UI implementation.
@@ -34,9 +34,9 @@ This contract translates the product rules into an API and persistence proposal.
 | `archivedAt` | Nullable UTC instant | Set when archived |
 | persistence version | Monotonically increasing integer, internal | Used to produce an ETag; not client-editable |
 
-The database should use a foreign key from `quests.creator_id` to `users.id`, non-null constraints for `id`, `creator_id`, `title`, `status`, and timestamps, and checks for enum values and any non-null `reward_xp`. Fields that can be omitted from a draft must remain nullable until publication. Published quests must satisfy every required field constraint.
+The database uses a restrictive foreign key from `quests.creator_id` to `users.id`, non-null constraints for `id`, `creator_id`, `title`, `status`, and timestamps, and checks for enum values and any non-null `reward_xp`. Fields that can be omitted from a draft remain nullable until publication. Published quests must satisfy every required field constraint.
 
-The user table does not exist yet. UUID is the proposed quest identifier; the actual `creator_id` column type must match the identity schema rather than forcing a second user-ID format.
+The identity schema defines `users.id` as UUID; Quest persistence uses that key without creating a second identity model. Quest IDs are also server-generated UUIDs.
 
 ### Rationale
 
@@ -254,13 +254,13 @@ ETag: "3"
 
 ## Authentication and users dependency
 
-There is no users table, authentication code, or authorization middleware in the current backend. The backend currently has only the health controller and a placeholder Liquibase changelog.
+The E03 identity migration defines the `users` table and UUID primary key. Authentication/security implementation is not present on the current `main` branch, so protected Quest APIs cannot ship until the Spring Security and authentication API work is integrated and verified.
 
 Quest implementation depends on E03 (#3) providing:
 
-1. A `users` table and stable primary-key type; `quests.creator_id` must reference `users.id`.
-2. Registration/login/session or token behavior and an authentication ADR selecting how a request becomes an authenticated principal.
-3. A server-side principal exposing the authenticated user ID for creator assignment and ownership checks.
+1. A `users` table and stable primary-key type; provided by the E03 persistence migration, with `quests.creator_id` referencing `users.id`.
+2. Registration/login/session behavior and an authentication ADR; the contract is in ADR 0002, while runtime security/authentication must be integrated into `main`.
+3. A server-side principal exposing the authenticated user ID for creator assignment and ownership checks; required before protected API implementation.
 4. Protected-route authorization and tests demonstrating unauthenticated `401`, non-owner private-resource `404`, and creator-only mutation.
 5. A profile display-name field and exposure rules before public Quest responses can show creator names.
 
@@ -272,9 +272,10 @@ SQ-008 can define the Quest contract without E03 implementation, as its issue sa
 - [x] Examples cover draft creation, invalid publication, private-resource access, and stale updates via the response and error contracts above.
 - [x] Public detail/list hide drafts and archived quests; owner visibility is defined.
 - [x] UTC timestamps, pagination shape, and error format are specified as proposals.
-- [x] Add the API-conventions baseline requested by #17 and align the Quest contract with it; maintainer review remains required.
-- [ ] Review the contract with maintainers and record approval before implementation.
-- [ ] Complete identity schema/authentication ADR work in E03 before protected Quest APIs are released.
+- [x] Add the API-conventions baseline requested by #17 and align the Quest contract with it.
+- [x] Contract merged through PR #38.
+- [x] Identity schema and authentication ADR are available.
+- [ ] Integrate and verify authentication/security runtime on `main` before protected Quest APIs are released.
 - [ ] Complete UX-001 through UX-006 owner review/sign-off before Quest CRUD/product UI work.
 
 No API, database migration, or tests were added in this design-only issue. The Java runtime remains at the repository's Java 21 baseline; the separately requested Java 25 upgrade is deferred and should be handled on its own issue/branch.
