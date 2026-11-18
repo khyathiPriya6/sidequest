@@ -6,8 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.sidequest.identity.User;
 import com.sidequest.identity.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -15,26 +13,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.bind.annotation.*;
 
 @SpringBootTest(properties = "spring.config.import=")
 @AutoConfigureMockMvc
-@Import(SecurityIT.Fixtures.class)
 class SecurityIT {
     @Autowired MockMvc mvc;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper json;
     @Autowired UserRepository users;
     @Autowired PasswordEncoder encoder;
     @Autowired AuthenticationManager authenticationManager;
@@ -92,14 +85,14 @@ class SecurityIT {
         assertThat(cookie.getSecure()).isTrue(); assertThat(cookie.isHttpOnly()).isTrue();
         assertThat(cookie.getPath()).isEqualTo("/"); assertThat(cookie.getDomain()).isNull();
         assertThat(bootstrap.getResponse().getHeader("Set-Cookie")).contains("SameSite=Lax");
-        String csrf = bootstrap.getResponse().getContentAsString();
-        var login = mvc.perform(post("/api/v1/auth/login").cookie(cookie).header("X-CSRF-TOKEN", csrf).param("id", user.getId().toString()))
+        String csrf = json.readTree(bootstrap.getResponse().getContentAsString()).get("csrfToken").asText();
+        var login = mvc.perform(post("/api/v1/auth/login").cookie(cookie).header("X-CSRF-TOKEN", csrf).contentType("application/json").content(json.writeValueAsString(java.util.Map.of("email", user.getEmail(), "password", "test password for account"))))
                 .andExpect(status().isOk()).andReturn();
         var authenticatedCookie = login.getResponse().getCookie("__Host-id");
         assertThat(authenticatedCookie.getValue()).isNotEqualTo(cookie.getValue());
         mvc.perform(get("/api/v1/auth/me").cookie(cookie)).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/auth/me").cookie(authenticatedCookie)).andExpect(status().isOk())
-                .andExpect(content().string(user.getId().toString()));
+                .andExpect(jsonPath("$.id").value(user.getId().toString()));
         mvc.perform(get("/not-allowed").cookie(authenticatedCookie)).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/auth/login").cookie(authenticatedCookie).header("X-CSRF-TOKEN", csrf))
                 .andExpect(status().isForbidden());
@@ -134,15 +127,4 @@ class SecurityIT {
 
     private static String uniqueName() { return "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 20); }
 
-    // Test-only endpoints exercise the real security/session boundary; never part of the runtime artifact.
-    @TestConfiguration static class Fixtures { @Bean Probe probe(SessionAuthentication auth) { return new Probe(auth); } }
-    @RestController static class Probe {
-        private final SessionAuthentication auth;
-        Probe(SessionAuthentication auth) { this.auth = auth; }
-        @GetMapping("/api/v1/auth/csrf") String csrf(CsrfToken token) { return token.getToken(); }
-        @PostMapping("/api/v1/auth/login") void login(@RequestParam UUID id, HttpServletRequest request, HttpServletResponse response) {
-            auth.establish(SecurityConfiguration.authenticated(new UserPrincipal(id)), request, response);
-        }
-        @GetMapping("/api/v1/auth/me") String me() { return SecurityContextHolder.getContext().getAuthentication().getName(); }
-    }
 }
