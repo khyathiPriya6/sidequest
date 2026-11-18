@@ -14,13 +14,13 @@ The Quest contract requires the server to assign the creator from an authenticat
 
 Use **server-side opaque sessions** rather than JWT access/refresh tokens for the MVP.
 
-- Use Spring Security's servlet session model and, after approval, a PostgreSQL-backed Spring Session JDBC repository. This fits the existing database and single deployable service without introducing Redis or an external identity provider.
+- Use Spring Security's servlet session model and, after the implementation issue is approved, a PostgreSQL-backed Spring Session JDBC repository. This fits the existing database and single deployable service without introducing Redis or an external identity provider.
 - For the browser SPA, carry only the opaque session identifier in an `HttpOnly` cookie. Never return it in JSON or put it in `localStorage` or `sessionStorage`.
 - For a future React Native client, defer the exact credential transport to the mobile issue. Preferred direction is the same opaque, revocable server-side session using a platform-protected credential store and a non-cookie request header; do not make the API depend on JWT claims. Mobile-specific CSRF and session handling must be reviewed before that client ships.
 - Return CSRF tokens separately from session credentials and require them for cookie-authenticated unsafe methods.
 - Enforce authentication and account status on the server. Resolve a stable user ID from the Spring Security principal and pass it to domain services; never accept an owner ID from request data.
 
-The product owner approved the session mechanism and session policies listed below on 2026-11-17. This documentation change does not implement authentication. The remaining registration-error/throttling and username-format details must be settled before their implementation; PR #40 still requires repository review/merge.
+The product owner approved the session mechanism and core registration policies listed below on 2026-11-17. This documentation change does not implement authentication. Numeric throttling thresholds and the registration UI update remain for their respective implementation/design work; PR #40 still requires repository review/merge.
 
 ## Alternatives considered
 
@@ -42,7 +42,7 @@ The product owner approved the session mechanism and session policies listed bel
 
 **Costs:** Adds an external service, account configuration, and dependency outside the MVP requirement and current self-hosted email/password scope. Revisit only with a product requirement and approved issue.
 
-## Security policy proposed for approval
+## Approved security policy
 
 ### Browser credential and CSRF controls
 
@@ -55,7 +55,7 @@ The product owner approved the session mechanism and session policies listed bel
 
 ### Expiration, logout, and revocation
 
-Proposed initial limits are **30 minutes idle** and **12 hours absolute**. The idle timeout may slide with activity, but the absolute lifetime does not. No “remember me” flow or refresh-token endpoint is proposed for the MVP.
+Approved initial limits are **30 minutes idle** and **12 hours absolute**. The idle timeout may slide with activity, but the absolute lifetime does not. No “remember me” flow or refresh-token endpoint is in the MVP.
 
 - Logout invalidates the current server-side session, clears the cookie with matching path/security attributes, and rotates/clears the CSRF token.
 - Multiple devices may have separate sessions. This endpoint logs out the current session; global “log out all devices” is outside the initial MVP unless the owner adds it.
@@ -67,14 +67,15 @@ Proposed initial limits are **30 minutes idle** and **12 hours absolute**. The i
 
 ### Passwords and account behavior
 
-- Store only an adaptive password hash, never plaintext or reversible encrypted passwords. Proposed implementation is Spring Security's `DelegatingPasswordEncoder` with Argon2id for new hashes and an upgrade path for future algorithms. Spring's Argon2 encoder requires the Bouncy Castle provider; add it only after this ADR is approved. Configure memory/time parameters using current OWASP guidance and benchmark without claiming an unmeasured performance target.
+- Store only an adaptive password hash, never plaintext or reversible encrypted passwords. The approved direction is Spring Security's `DelegatingPasswordEncoder` with Argon2id for new hashes and an upgrade path for future algorithms. Spring's Argon2 encoder requires the Bouncy Castle provider; add it in the implementation issue. Configure memory/time parameters using current OWASP guidance and benchmark without claiming an unmeasured performance target.
 - Approved password validation is 12–128 Unicode code points, with no arbitrary composition rules and no silent truncation. Enforce the limit before hashing and reject oversized JSON bodies.
-- Treat passwords as exact input: do not trim, case-fold, or normalize them; enforce the proposed length limit before hashing.
+- Treat passwords as exact input: do not trim, case-fold, or normalize them; enforce the approved length limit before hashing.
 - Login failure responses use the same generic `401` shape for unknown email, wrong password, and disabled account.
-- Registration activates the account and creates a session on success; email verification and password recovery are not in the MVP requirements. Duplicate-account responses use a generic `409` message rather than returning an account record. This reduces detail in the response but cannot eliminate all account-enumeration risk; rate-limit registration/login at the application or deployment boundary without introducing unapproved infrastructure.
+- Registration activates the account and creates a session on success; email verification and password recovery are not in the MVP requirements. The owner approved a generic `409 account_conflict` for duplicate email/username. This reduces detail in the response but cannot eliminate all account-enumeration risk.
+- Apply configurable application-level throttling by source IP and normalized account for login and registration. Do not permanently lock accounts. Select numeric thresholds and test them in the implementation issue; per-instance throttling does not coordinate across replicas, so do not horizontally scale public authentication until a shared limiter is designed.
 - Normalize email consistently before comparison and enforce uniqueness in the database. Do not apply provider-specific transformations such as removing dots or plus tags.
-- The product owner approved a required unique username on 2026-11-17. The PRD and auth wireframe still need to be updated before registration UI implementation; username validation and canonicalization details remain to be confirmed.
-- The proposed user schema uses a UUID ID, normalized unique email, unique username, password hash, `ACTIVE`/`DISABLED` status, and UTC created/updated timestamps.
+- The product owner approved a required username on 2026-11-17: 3–30 ASCII letters, digits, or underscores, canonicalized to lowercase and unique. The PRD and auth wireframe still need to be updated before registration UI implementation.
+- The proposed user schema uses a UUID ID, normalized unique email, canonical unique username, password hash, `ACTIVE`/`DISABLED` status, and UTC created/updated timestamps.
 
 ## Principal and authorization boundary
 
@@ -95,7 +96,7 @@ Proposed initial limits are **30 minutes idle** and **12 hours absolute**. The i
 ## Dependencies and rollout order
 
 1. Owner approves this ADR's mechanism and security policy, or requests changes.
-2. E03 defines the users fields, uniqueness/canonicalization rules, account-state semantics, and migration. Update the registration design to include the owner-approved username field and finalize its format.
+2. E03 defines the users fields, uniqueness/canonicalization rules, account-state semantics, and migration. Update the registration design to include the owner-approved username field.
 3. Add Spring Security and the approved session repository in its own implementation issue; protect the API deny-by-default while retaining public health and public published Quest reads.
 4. Implement registration/login/logout/current-user contracts and security tests.
 5. Integrate the browser UI only after the frontend-foundation PR #37 is reviewed/merged and the approved login/register design is available.
@@ -113,7 +114,7 @@ No schema, session persistence, or protected business API is implemented in this
 - [x] Approve registration activation without email verification/password recovery in MVP.
 - [x] Approve required unique username; registration design still needs a username field.
 - [x] Approve Argon2id provider/dependency and the proposed 12–128 code-point password bounds.
-- [ ] Approve username format/canonicalization and duplicate-registration/throttling policy.
+- [x] Approve username format/canonicalization and generic duplicate-registration response with per-IP/account throttling; numeric thresholds remain for the implementation issue.
 
 ## Learning notes
 

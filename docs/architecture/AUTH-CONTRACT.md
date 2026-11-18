@@ -1,6 +1,6 @@
 # E03 — Authentication API and security boundaries
 
-**Status:** Core session architecture approved; username and registration policy details remain open
+**Status:** Core session and registration policies approved; registration design handoff remains open
 **Issue:** [#39 — E03-ARCH](https://github.com/khyathiPriya6/sidequest/issues/39)
 **Scope:** Contract proposal only; no endpoints or security configuration are implemented.
 
@@ -30,7 +30,7 @@ Safe methods (`GET`, `HEAD`, `OPTIONS`) must not mutate domain state. The CSRF b
 
 The exact user/profile fields depend on the owner-approved users schema. Do not include password hashes, account status internals, session identifiers, roles, or CSRF tokens in the current-user representation.
 
-Registration (required username; format and canonicalization are still to be approved):
+Registration (required username; canonical lowercase, 3–30 ASCII letters, digits, or underscores):
 
 ```http
 POST /api/v1/auth/register
@@ -39,12 +39,12 @@ X-CSRF-TOKEN: <csrf-token>
 
 {
   "email": "explorer@example.test",
-  "username": "quest-maker",
+  "username": "Quest_Maker",
   "password": "<user-supplied password>"
 }
 ```
 
-Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. The registration UI design must include the approved username field before UI implementation.
+Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. Store the username canonically as `quest_maker`; uniqueness is case-insensitive. Update the registration UI design to include the approved username field before UI implementation.
 
 Login:
 
@@ -64,7 +64,8 @@ Current user:
 ```json
 {
   "id": "018f47d1-7c61-7e00-9a7c-000000000002",
-  "email": "explorer@example.test"
+  "email": "explorer@example.test",
+  "username": "quest_maker"
 }
 ```
 
@@ -99,8 +100,9 @@ Errors use the shared RFC 9457 Problem Details contract from [API conventions](.
 - Wrong email/password or disabled account at login: same generic `401` response so credential failures do not identify which value was wrong.
 - Authenticated user lacking permission: `403`, except private Quest resources that use the SQ-008 concealed `404`.
 - Invalid registration fields: `422` with field-level errors that do not echo the submitted password.
-- Password proposal: 12–128 Unicode code points, no composition rules, no trimming/normalization, no truncation; hash using approved Argon2id parameters. The bounds/provider require owner approval.
-- Duplicate account: proposed generic `409` `account_conflict`; exact enumeration/rate-limit policy must be approved.
+- Password policy: 12–128 Unicode code points, no composition rules, no trimming/normalization, no truncation; hash using approved Argon2id parameters.
+- Duplicate email or username: generic `409` `account_conflict`; do not identify which field is already registered.
+- Apply configurable application-level throttling by source IP and normalized account for login and registration; do not permanently lock accounts. Select numeric thresholds and test them in the implementation issue. Per-instance limits do not coordinate across replicas.
 - Missing/invalid CSRF token on an unsafe cookie-authenticated request: `403` Problem Details with a stable error code and no session/token values.
 
 Never log passwords, password hashes, session cookies/IDs, CSRF tokens, authorization headers, or full credential-bearing request bodies.
@@ -122,12 +124,12 @@ At minimum, the schema design must specify:
 
 - Stable primary key type compatible with the `quests.creator_id` foreign key.
 - Normalized email and a database uniqueness constraint/index.
-- Required unique username; format, normalization, and uniqueness semantics must be explicit.
+- Required unique username, 3–30 ASCII letters/digits/underscores, stored in lowercase; enforce uniqueness on the canonical value.
 - Password hash storage only (no reversible password field).
 - Active/disabled account state, creation/update timestamps, and behavior on disable.
 - A session repository schema and cleanup/expiry policy if ADR 0002 is approved.
 
-The current user-schema proposal uses a UUID ID, normalized unique email, required unique username, active/disabled status, password hash, and UTC created/updated timestamps. Username format/canonicalization remains unresolved. The approved password-hash direction is Argon2id via Spring Security's `DelegatingPasswordEncoder` and Bouncy Castle provider.
+The current user-schema proposal uses a UUID ID, normalized unique email, required canonical unique username, active/disabled status, password hash, and UTC created/updated timestamps. The approved password-hash direction is Argon2id via Spring Security's `DelegatingPasswordEncoder` and Bouncy Castle provider.
 
 Do not run schema changes against an existing database without explicit approval.
 
@@ -141,7 +143,7 @@ Do not run schema changes against an existing database without explicit approval
 ## Approval checklist
 
 - [x] Approve authentication/session mechanism, cookie/CSRF assumptions, and session behavior.
-- [ ] Review API route list, status codes, duplicate-account, and throttling policies.
-- [x] Resolve username as required; [ ] finalize username format and align registration design before frontend integration.
-- [x] Approve immediate account activation; [ ] finalize duplicate-account and abuse-throttling behavior.
+- [ ] Review API route list and status codes.
+- [x] Approve required username and its format/canonicalization; update registration design before frontend integration.
+- [x] Approve immediate account activation, generic duplicate-account response, and configurable per-IP/account throttling (numeric thresholds remain for the implementation issue).
 - [x] Approve session duration and revocation policy in ADR 0002.
