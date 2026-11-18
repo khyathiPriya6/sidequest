@@ -7,7 +7,7 @@ Updated 2026-11-18 against `origin/main` at `63c748b`. No existing developer dat
 | Auth architecture #39 / PR #40 | Merged into `main` | None for the approved architecture. |
 | Frontend foundation #36 / PR #37 | Merged into `main` | Foundation is present; this does not by itself complete UX sign-off or auth UI #44. |
 | User/session persistence #41 / PR #45 | Merged into `main` | Migrations were verified only on isolated PostgreSQL. |
-| Session security #42 / PR #46 | Runtime is being integrated on `feat/e03-security-main-integration`; original PR #46's target was the #41 feature branch, not `main`. | Integration PR to `main`; private Quest 404 behavior requires later service/API integration tests. |
+| Session security #42 / PR #46 | Runtime integrated on `feat/e03-security-main-integration`; original PR #46's target was the #41 feature branch, not `main`. | Integration PR to `main`; private Quest 404 behavior requires later service/API integration tests. |
 | Authentication APIs #43 / PR #47 | Original code is on `feat/e03-authentication-api`; original PR #47's target was the #42 feature branch. | Integrate security first, then API runtime as a separate issue-linked branch/PR. |
 | Authentication UI #44 | Not started | Depends on #43 runtime and approved registration design with username field/error states. |
 | SQ-009 #20 / PR #48 | Merged into `main` at `63c748b` | Complete. |
@@ -33,6 +33,7 @@ Latest direct main validation before integrating #42:
 - `cd ui && npm test` — passed, 31 tests across 5 files.
 - `cd ui && npm run build` — passed, TypeScript and Vite production build.
 - `cd backend && JAVA_HOME=/private/tmp/jdk-21.0.13+9/Contents/Home PATH=/private/tmp/jdk-21.0.13+9/Contents/Home/bin:$PATH bash scripts/test-postgres.sh` — passed on SQ-009 work, 13 tests, zero failures/errors/skips, fresh isolated UTF-8 PostgreSQL 18.4 cluster.
+- On the security integration branch, the same isolated command passed with 12 tests (6 unit + 6 PostgreSQL integration tests), zero failures/errors/skips; this included Spring Security route, cookie, CSRF, account-revocation, and Quest persistence tests.
 - Liquibase initially applied four changesets and applied zero on repeat. No existing database was used.
 - Auth browser UI, Quest HTTP endpoints, and full Quest E2E have not yet been implemented or verified.
 
