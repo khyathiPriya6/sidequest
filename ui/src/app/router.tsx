@@ -1,4 +1,4 @@
-import { Navigate, useLocation, type RouteObject } from 'react-router-dom'
+import { Navigate, useLocation, useParams, type RouteObject } from 'react-router-dom'
 import { AppShell } from './layouts/AppShell'
 import { ExploreShell } from '../pages/ExploreShell'
 import { QuestDetailPage } from '../pages/QuestDetailPage'
@@ -7,10 +7,16 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { AuthPage } from '../features/auth/AuthPage'
 import { RequireAuth } from '../features/auth/RequireAuth'
 import { MyQuestsPage } from '../pages/MyQuestsPage'
+import { QuestDraftPage } from '../pages/QuestDraftPage'
 
 function LegacyQuestDashboardRedirect() {
   const { search } = useLocation()
   return <Navigate to={{ pathname: '/my-quests', search }} replace />
+}
+
+function LegacyQuestDashboardEditRedirect() {
+  const { id = '' } = useParams()
+  return <Navigate to={`/quests/${encodeURIComponent(id)}/edit`} replace />
 }
 
 export function createAppRoutes(): RouteObject[] {
@@ -27,8 +33,10 @@ export function createAppRoutes(): RouteObject[] {
         {
           element: <RequireAuth />,
           children: [
-            { path: '/quests/new', handle: { title: 'Create a quest' }, element: <FeaturePlaceholder title="Create a quest" description="Quest creation will be available soon." /> },
-            { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <FeaturePlaceholder title="Edit a quest" description="Editing your own quest drafts will be available soon." /> },
+            { path: '/quests/new', handle: { title: 'Create a quest' }, element: <QuestDraftPage mode="create" /> },
+            { path: '/my/quests/new', element: <Navigate to="/quests/new" replace /> },
+            { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <QuestDraftPage mode="edit" /> },
+            { path: '/my/quests/:id/edit', element: <LegacyQuestDashboardEditRedirect /> },
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
             { path: '/profile', handle: { title: 'Your profile' }, element: <FeaturePlaceholder title="Your profile" description="Your profile and earned progress will be available after sign-in is ready." /> },
           ],
