@@ -6,7 +6,7 @@ import { createAppRoutes } from '../../app/router'
 import { AuthProvider } from './AuthContext'
 import type { AuthUser } from './authApi'
 
-const user: AuthUser = { id: 'user-1', email: 'player@example.test', username: 'quest_player' }
+const user: AuthUser = { id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player' }
 let activeUser: AuthUser | null
 let csrfToken: string
 let rejectNextWrite: boolean

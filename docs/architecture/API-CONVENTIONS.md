@@ -1,8 +1,8 @@
 # SideQuest API conventions
 
-**Status:** Proposed baseline from SQ-006 (#17), reconciled for SQ-008 (#19); review before CRUD implementation.
+**Status:** Approved baseline from SQ-006 (#17), reconciled for SQ-008 (#19); implemented by the authentication/Quest integration candidate (#56).
 
-These conventions apply to the versioned REST API in the modular monolith. They describe contracts, not implementations. The backend currently exposes only the health endpoint.
+These conventions apply to the versioned REST API in the modular monolith. Health, session authentication, and Quest endpoints are implemented in the integration candidate; see the implementation tracker for mainline integration status.
 
 ## Routes, JSON, and timestamps
 
@@ -96,3 +96,9 @@ Keep request/response examples and status behavior in versioned OpenAPI 3.1 docu
 - Authentication, authorization, and CORS policy are defined by the identity/security ADR and endpoint-specific access rules; this document does not select token or session behavior.
 - Endpoint-specific contracts may narrow these general rules, but must not contradict their wire formats or status meanings.
 - The [SQ-008 Quest contract](./QUEST-CONTRACT.md) applies these conventions to Quest fields, visibility, transitions, validation, and ETag handling.
+
+## Browser response and recovery rules
+
+Versioned owner reads and Quest writes require the response ETag: a quoted canonical nonnegative decimal version no greater than Java `Long.MAX_VALUE`. Missing, weak, malformed, or overflowing tags invalidate the response; clients must not fabricate a version or retain the previous tag after a mutation. An uncertain write may have committed: reload explicitly, never automatically replay it.
+
+A protected 401 clears client authentication even when its error body is unreadable. A CSRF 403 does not itself prove logout; verify `/auth/me` and preserve the failed form when the session remains active. Login redirects use safe internal destinations. Validate current-user structures before establishing authenticated state. Pagination rejects `page * size` above 2147483647 as well as the documented page/size bounds.

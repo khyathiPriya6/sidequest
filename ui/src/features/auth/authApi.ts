@@ -4,72 +4,17 @@ export interface AuthUser {
   username: string
 }
 
-export interface ProblemFieldError {
-  field: string
-  code: string
-  message: string
-}
-
-interface ProblemDetails {
-  title?: string
-  detail?: string
-  code?: string
-  errors?: ProblemFieldError[]
-}
-
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    readonly fieldErrors: ProblemFieldError[] = [],
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
-}
-
+import { ApiError, apiRequest, isRecord } from '../../lib/api'
+export { ApiError, apiRequest, authExpiredEvent } from '../../lib/api'
+export type { ProblemFieldError } from '../../lib/api'
 const authPath = '/api/v1/auth'
-export const authExpiredEvent = 'sidequest:auth-expired'
-
-export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    credentials: 'same-origin',
-    headers: {
-      Accept: 'application/json, application/problem+json',
-      ...init?.headers,
-    },
-  })
-
-  let body: unknown
-  if (response.status !== 204) {
-    try {
-      body = await response.json()
-    } catch {
-      throw new ApiError(response.status, 'invalid_response', 'The server returned an unreadable response.')
-    }
+function currentUser(body: unknown): AuthUser {
+  if (!isRecord(body) || typeof body.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id)
+    || typeof body.email !== 'string' || !body.email.includes('@')
+    || typeof body.username !== 'string' || !/^[a-z0-9_]{3,30}$/.test(body.username)) {
+    throw new ApiError(502, 'invalid_response', 'The service returned an invalid account. Please restore your session again.')
   }
-
-  if (!response.ok) {
-    const problem = body && typeof body === 'object' ? body as ProblemDetails : {}
-    if (response.status === 401 && !path.endsWith('/login') && !path.endsWith('/register') && !path.endsWith('/me')) {
-      window.dispatchEvent(new Event(authExpiredEvent))
-    }
-    const detail = typeof problem.detail === 'string' ? problem.detail : undefined
-    const title = typeof problem.title === 'string' ? problem.title : undefined
-    const code = typeof problem.code === 'string' ? problem.code : 'request_failed'
-    const fieldErrors = Array.isArray(problem.errors) ? problem.errors.filter((error): error is ProblemFieldError =>
-      error !== null && typeof error === 'object'
-      && typeof error.field === 'string' && typeof error.code === 'string' && typeof error.message === 'string') : []
-    throw new ApiError(
-      response.status,
-      code,
-      detail ?? title ?? 'The request could not be completed.',
-      fieldErrors,
-    )
-  }
-  return body as T
+  return { id: body.id, email: body.email, username: body.username }
 }
 
 export function getCsrfToken(): Promise<{ csrfToken: string }> {
@@ -82,7 +27,7 @@ export function getCsrfToken(): Promise<{ csrfToken: string }> {
 }
 
 export function getCurrentUser(): Promise<AuthUser> {
-  return apiRequest(`${authPath}/me`)
+  return apiRequest(`${authPath}/me`).then(currentUser)
 }
 
 export function register(
@@ -93,7 +38,7 @@ export function register(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
     body: JSON.stringify(credentials),
-  })
+  }).then(currentUser)
 }
 
 export function login(credentials: { email: string; password: string }, csrfToken: string): Promise<AuthUser> {
@@ -101,7 +46,7 @@ export function login(credentials: { email: string; password: string }, csrfToke
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
     body: JSON.stringify(credentials),
-  })
+  }).then(currentUser)
 }
 
 export function logout(csrfToken: string): Promise<void> {

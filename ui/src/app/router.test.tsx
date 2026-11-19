@@ -5,6 +5,12 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { createAppRoutes } from './router'
 import { AuthProvider } from '../features/auth/AuthContext'
 
+function renderAt(path: string) {
+  const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] })
+  render(<AuthProvider><RouterProvider router={router} /></AuthProvider>)
+  return router
+}
+
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
   const path = String(input)
   if (path.endsWith('/csrf')) return Response.json({ csrfToken: 'test-token' })
@@ -14,7 +20,7 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) =
 
 it.each([
   ['/', 'Make today a quest.'], ['/quests/new', 'Create a quest'], ['/quests/123/edit', 'Edit a quest'],
-  ['/quests/123', 'Quest details'], ['/my-quests', 'My quests'], ['/profile', 'Your profile'],
+  ['/my-quests', 'My quests'], ['/profile', 'Your profile'],
   ['/missing', 'That page isn’t here.'],
 ])('resolves public route %s to the expected view', async (path, title) => {
   const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] })

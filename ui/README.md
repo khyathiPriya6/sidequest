@@ -12,9 +12,11 @@ npm run dev
 
 Start the backend in another terminal using `backend/README.md`. The dev server proxies `/api` to `http://localhost:8080`. To change the target, copy `.env.example` to `.env.local`, edit `API_ORIGIN`, and restart Vite. An exported `API_ORIGIN` also works and overrides the file. Never put database credentials in the UI configuration.
 
-The root redirects to `/quests`, which shows the themed application shell and existing empty quest-board state. The footer's **Service status** section requests `/api/v1/health` and displays loading, online, or an error with retry. Requests time out after eight seconds. Only the expected `UP` response from `sidequest-api` is treated as online.
+The root redirects to `/quests`, a public catalogue with URL-backed search, filters and pagination. `/quests/:id` displays API details; the backend conceals private quests from non-owners. `/login` and `/register` establish server sessions. Protected `/my-quests`, `/quests/new`, and `/quests/:id/edit` provide creator management. `/my/quests` redirects to the canonical dashboard.
 
-In development, open `/dev/components` to inspect the seven reusable components. Its **Preview member navigation** button shows desktop/mobile member navigation using a local presentation fixture, not an authenticated session. The gallery, link, and sample quest data are excluded from production builds. Other product routes are explicit coming-soon placeholders; Quest CRUD, authentication, and XP awards are not implemented.
+The shared request boundary sends same-origin cookies, handles Problem Details and notifies authentication state about expired sessions. CSRF rejection verifies session status without replaying writes. Draft editing requires a real strong ETag; uncertain mutations require explicit recovery. Unsaved changes block publication and prompt before navigation or sign-out. Title is required even for drafts; validation counts Unicode code points.
+
+The footer retains the retryable health check. `/dev/components` is a development-only presentation gallery. Profile, joining, completion, XP awards and achievements are outside this implementation.
 
 ## Check the integration
 
@@ -41,7 +43,7 @@ Alternatively use installed Google Chrome without downloading Chromium:
 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
 ```
 
-Playwright starts and stops its own Vite server. It mocks only the health endpoint for deterministic component/layout checks; a real-backend proxy check is separate. Screenshots and failure traces go to ignored `test-results/`. Component tests use Vitest, React Testing Library, and jsdom; browser tests cover native dialog focus, navigation, responsive layout, reduced motion, and automated accessibility checks.
+Playwright starts and stops its own Vite server. Foundation browser checks use deterministic API fixtures. The authentication and review regression suites require `AUTH_E2E=1` and a real API; they are skipped otherwise. Run `JAVA_HOME=/path/to/jdk21 bash backend/scripts/test-browser.sh` from the repository root for all 11 checks against a freshly created PostgreSQL database and real API. The harness sets `API_ORIGIN` and `AUTH_E2E`, then stops its own services. Screenshots and failure traces go to ignored `test-results/`. Component tests use Vitest, React Testing Library, and jsdom; browser tests cover native dialog focus, navigation, responsive layout, reduced motion, and automated accessibility checks.
 
 ## Proxy and CORS
 

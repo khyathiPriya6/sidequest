@@ -6,7 +6,7 @@ import { createAppRoutes } from '../app/router'
 import { AuthProvider } from '../features/auth/AuthContext'
 
 const quest = {
-  id: 'draft-1', creatorId: 'user-1', title: 'A valid title', description: 'A valid description',
+  id: 'draft-1', creatorId: '00000000-0000-4000-8000-000000000001', title: 'A valid title', description: 'A valid description',
   category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 25, status: 'DRAFT',
   createdAt: '2025-01-01T10:00:00Z', updatedAt: '2025-01-01T10:00:00Z',
   publishedAt: null, archivedAt: null,
@@ -22,7 +22,7 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: 
   const url = new URL(String(input), 'http://localhost')
   if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
   if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
-    id: 'user-1', email: 'player@example.test', username: 'quest_player',
+    id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
   }))
   if (url.pathname === '/api/v1/me/quests/draft-1') {
     return Promise.resolve(Response.json(quest, { status: 200, headers: { ETag: '"4"' } }))
@@ -80,4 +80,156 @@ it('loads an owned draft, sends If-Match, and reports stale conflicts', async ()
   await user.click(screen.getByRole('button', { name: 'Save changes' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('changed in another tab')
   expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Updated title')
+})
+
+function intercept(handler: (path: string, init?: RequestInit) => Response | undefined) {
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (input, init) => handler(new URL(String(input), 'http://localhost').pathname, init) ?? original(input, init))
+}
+
+it.each(['', '   ', '😀😀', '😀'.repeat(121)])('rejects invalid required title locally (%s)', async title => {
+  renderAt('/quests/new')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: title } })
+  await userEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+  expect(screen.getByText('Use 3–120 Unicode characters.')).toBeVisible()
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
+})
+
+it('requires saving edited content before publication and uses the newly saved ETag', async () => {
+  let savedTitle = quest.title
+  let publishedTitle = ''
+  intercept((path, init) => {
+    if (init?.method === 'PATCH') {
+      savedTitle = JSON.parse(String(init.body)).title
+      return Response.json({ ...quest, title: savedTitle }, { headers: { ETag: '"5"' } })
+    }
+    if (path.endsWith('/publish')) {
+      expect(new Headers(init?.headers).get('If-Match')).toBe('"5"')
+      publishedTitle = savedTitle
+      return Response.json({ ...quest, title: savedTitle, status: 'PUBLISHED' }, { headers: { ETag: '"6"' } })
+    }
+  })
+  renderAt('/quests/draft-1/edit')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Latest saved title' } })
+  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Publish quest' })).toBeEnabled())
+  await userEvent.click(screen.getByRole('button', { name: 'Publish quest' }))
+  await waitFor(() => expect(publishedTitle).toBe('Latest saved title'))
+})
+
+it('preserves edits and forbids publication after an uncertain save response', async () => {
+  let patches = 0
+  intercept((_path, init) => {
+    if (init?.method === 'PATCH') { patches++; return Response.json(quest) } // Missing required ETag.
+  })
+  renderAt('/quests/draft-1/edit')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Keep my edits' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('valid version')
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Keep my edits')
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  expect(patches).toBe(1)
+  await userEvent.click(screen.getByRole('button', { name: 'Reload saved quest' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Keep my edits')
+  await userEvent.click(screen.getByRole('button', { name: 'Reload saved quest' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Reload and discard local changes' }))
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(quest.title))
+})
+
+it('renders every publication field error beside its control', async () => {
+  intercept(path => path.endsWith('/publish') ? Response.json({ errors: [
+    { field: 'category', code: 'required', message: 'Choose a category.' },
+    { field: 'difficulty', code: 'required', message: 'Choose difficulty.' },
+    { field: 'description', code: 'required', message: 'Add a description.' },
+    { field: 'rewardXp', code: 'required', message: 'Add XP.' },
+  ] }, { status: 422 }) : undefined)
+  renderAt('/quests/draft-1/edit')
+  await screen.findByRole('textbox', { name: 'Title' })
+  await userEvent.click(screen.getByRole('button', { name: 'Publish quest' }))
+  expect(await screen.findByText('Choose a category.')).toBeVisible()
+  expect(screen.getByRole('combobox', { name: /Category/ })).toHaveAccessibleDescription('Choose a category.')
+  expect(screen.getByRole('combobox', { name: /Difficulty/ })).toHaveAccessibleDescription('Choose difficulty.')
+  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAccessibleDescription('Add a description.')
+  expect(screen.getByRole('spinbutton', { name: 'Reward XP' })).toHaveAccessibleDescription('Add XP.')
+})
+
+it('warns before navigating away from unsaved input and can cancel', async () => {
+  const router = renderAt('/quests/draft-1/edit')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Unsaved title' } })
+  await userEvent.click(screen.getByRole('link', { name: 'Back to My quests' }))
+  expect(await screen.findByRole('dialog', { name: 'Discard unsaved changes?' })).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+  expect(router.state.location.pathname).toBe('/quests/draft-1/edit')
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Unsaved title')
+})
+
+it.each([401, 403])('expires auth on a %s write rejection without resubmission, preserving return path', async status => {
+  let expired = false
+  let writes = 0
+  intercept((path, init) => {
+    if (init?.method === 'PATCH') {
+      writes++; expired = true
+      return Response.json({ code: status === 403 ? 'csrf_invalid' : 'unauthenticated' }, { status })
+    }
+    if (expired && path.endsWith('/auth/me')) return Response.json({}, { status: 401 })
+  })
+  const router = renderAt('/quests/draft-1/edit?from=review')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Unsaved title' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  expect(router.state.location.state.from.pathname).toBe('/quests/draft-1/edit')
+  expect(router.state.location.state.from.search).toBe('?from=review')
+  expect(screen.queryByText('@quest_player')).not.toBeInTheDocument()
+  expect(writes).toBe(1)
+})
+
+it('keeps authenticated state for a CSRF rejection when the session is still valid', async () => {
+  let writes = 0
+  intercept((_path, init) => {
+    if (init?.method === 'PATCH') { writes++; return Response.json({ code: 'csrf_invalid', detail: 'Security check expired.' }, { status: 403 }) }
+  })
+  renderAt('/quests/draft-1/edit')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Preserved text' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Security check expired.')
+  expect(screen.getByText('@quest_player')).toBeVisible()
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Preserved text')
+  expect(writes).toBe(1)
+})
+
+it('does not log out or lose edits when the unsaved sign-out warning is cancelled', async () => {
+  renderAt('/quests/draft-1/edit')
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Keep editing this' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+  expect(await screen.findByRole('dialog', { name: 'Discard changes and sign out?' })).toBeVisible()
+  await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Keep editing this')
+  expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/logout'))).toBe(false)
+})
+
+it('prevents duplicate saves and edits while a save is pending', async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!
+  let finish: ((response: Response) => void) | undefined
+  let patches = 0
+  vi.mocked(fetch).mockImplementation((input, init) => {
+    if (init?.method === 'PATCH') {
+      patches++
+      return new Promise<Response>(resolve => { finish = resolve })
+    }
+    return original(input, init)
+  })
+  renderAt('/quests/draft-1/edit')
+  const title = await screen.findByRole('textbox', { name: 'Title' })
+  fireEvent.change(title, { target: { value: 'Saved once' } })
+  fireEvent.submit(title.closest('form')!)
+  fireEvent.submit(title.closest('form')!)
+  await waitFor(() => expect(patches).toBe(1))
+  expect(title).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  finish?.(Response.json({ ...quest, title: 'Saved once' }, { headers: { ETag: '"5"' } }))
+  await waitFor(() => expect(title).toBeEnabled())
+  expect(title).toHaveValue('Saved once')
 })

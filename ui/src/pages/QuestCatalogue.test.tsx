@@ -162,3 +162,18 @@ it('renders public quest details and distinguishes a private or missing quest', 
   renderAt('/quests/private-quest')
   expect(await screen.findByRole('heading', { name: 'Quest unavailable' })).toBeVisible()
 })
+
+it('renders an archived quest returned for its authenticated owner', async () => {
+  const archived = { ...publishedQuest, status: 'ARCHIVED', archivedAt: '2026-01-01T00:00:00Z' }
+  vi.stubGlobal('fetch', vi.fn(async input => {
+    const path = String(input)
+    if (path.endsWith('/csrf')) return Response.json({ csrfToken: 'token' })
+    if (path.endsWith('/auth/me')) return Response.json({ id: '00000000-0000-4000-8000-000000000001', email: 'owner@example.test', username: 'owner' })
+    if (path.endsWith('/quests/quest-123')) return Response.json(archived, { headers: { ETag: '"3"' } })
+    return Response.json({ status: 'UP' })
+  }))
+  renderAt('/quests/quest-123')
+  expect(await screen.findByText(archived.description!)).toBeVisible()
+  expect(screen.getByText('50 XP reward')).toBeVisible()
+  expect(await screen.findByText('@owner')).toBeVisible()
+})

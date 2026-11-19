@@ -49,6 +49,10 @@ class QuestApiIT {
         UUID id = UUID.fromString(draft.get("id").asText());
         assertThat(draft.get("creatorId").asText()).isEqualTo(owner.userId());
         assertThat(draft.get("status").asText()).isEqualTo("DRAFT");
+        assertThat(draft.get("createdAt").isTextual()).isTrue();
+        assertThat(draft.get("updatedAt").isTextual()).isTrue();
+        assertThat(java.time.Instant.parse(draft.get("createdAt").asText()))
+                .isEqualTo(java.time.Instant.parse(draft.get("updatedAt").asText()));
         assertThat(draft.has("version")).isFalse();
         String initialEtag = created.headers().firstValue("etag").orElseThrow();
         assertThat(initialEtag).matches("\"\\d+\"");
@@ -57,6 +61,8 @@ class QuestApiIT {
 
         HttpResponse<String> list = send(owner, "GET", "/api/v1/me/quests", null, null, null);
         assertThat(list.statusCode()).isEqualTo(200);
+        assertThat(send(owner, "GET", "/api/v1/me/quests?page=2147483647&size=100", null, null, null).statusCode())
+                .isEqualTo(400);
         JsonNode page = json.readTree(list.body());
         assertThat(page.get("totalElements").asLong()).isEqualTo(1);
         assertThat(page.get("content").get(0).get("id").asText()).isEqualTo(id.toString());

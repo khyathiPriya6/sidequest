@@ -26,7 +26,7 @@ class QuestService {
         var creator = users.findById(creatorId).orElseThrow(QuestApiFailure::notFound);
         Quest quest = Quest.create(creator, values.title(), values.description(),
                 values.category(), values.difficulty(), values.rewardXp());
-        quests.saveAndFlush(quest);
+        quest = quests.saveAndFlush(quest);
         return versioned(quest);
     }
 
@@ -111,6 +111,9 @@ class QuestService {
         if (page < 0 || size < 1 || size > 100) {
             throw QuestApiFailure.badRequest("invalid_pagination",
                     "Page must be non-negative and size must be between 1 and 100.");
+        }
+        if ((long) page * size > Integer.MAX_VALUE) {
+            throw QuestApiFailure.badRequest("invalid_pagination", "The requested page is out of range.");
         }
         return PageRequest.of(page, size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));

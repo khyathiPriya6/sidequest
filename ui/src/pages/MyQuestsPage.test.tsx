@@ -7,7 +7,7 @@ import { AuthProvider } from '../features/auth/AuthContext'
 import type { Quest, QuestPage } from '../features/quests/questApi'
 
 const draft: Quest = {
-  id: 'draft-1', creatorId: 'user-1', title: 'Draft walk', description: 'A draft description',
+  id: 'draft-1', creatorId: '00000000-0000-4000-8000-000000000001', title: 'Draft walk', description: 'A draft description',
   category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 25, status: 'DRAFT',
   createdAt: '2025-01-02T10:00:00Z', updatedAt: '2025-01-02T10:00:00Z',
   publishedAt: null, archivedAt: null,
@@ -35,7 +35,7 @@ beforeEach(() => {
   const url = new URL(String(input), 'http://localhost')
   if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
   if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
-    id: 'user-1', email: 'player@example.test', username: 'quest_player',
+    id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
   }))
   if (url.pathname === '/api/v1/me/quests') {
     const status = url.searchParams.get('status')
@@ -107,7 +107,7 @@ it('shows empty and error states and retries service failures', async () => {
     const url = new URL(String(input), 'http://localhost')
     if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
     if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
-      id: 'user-1', email: 'player@example.test', username: 'quest_player',
+      id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
     }))
     if (url.pathname === '/api/v1/me/quests') return Promise.resolve(Response.json(page([])))
     return Promise.resolve(Response.json({ status: 'UP' }))
@@ -121,7 +121,7 @@ it('shows empty and error states and retries service failures', async () => {
     const url = new URL(String(input), 'http://localhost')
     if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
     if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
-      id: 'user-1', email: 'player@example.test', username: 'quest_player',
+      id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
     }))
     if (url.pathname === '/api/v1/me/quests') {
       if (fail) return Promise.resolve(Response.json({ detail: 'The quest service is unavailable.' }, { status: 503 }))
@@ -151,4 +151,17 @@ it('publishes a draft and confirms or cancels archive actions', async () => {
   await user.click(screen.getByRole('button', { name: 'Archive' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Archive this quest?' })).getByRole('button', { name: 'Confirm archive' }))
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'Published walk' })).not.toBeInTheDocument())
+})
+
+it('clears authenticated navigation after a protected read expires and preserves the destination', async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    if (String(input).includes('/api/v1/me/quests')) return Response.json({ code: 'unauthenticated' }, { status: 401 })
+    return original(input, init)
+  })
+  const router = renderAt('/my-quests?status=ARCHIVED')
+  expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  expect(router.state.location.state.from.pathname).toBe('/my-quests')
+  expect(router.state.location.state.from.search).toBe('?status=ARCHIVED')
+  expect(screen.queryByText('@quest_player')).not.toBeInTheDocument()
 })

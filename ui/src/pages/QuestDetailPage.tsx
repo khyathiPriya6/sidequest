@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Sparkles } from 'lucide-react'
 import { Link, useLocation, useParams } from 'react-router-dom'
+import { safeReturnPath } from '../features/auth/safeReturnPath'
 import { Badge } from '../components/ui/Badge/Badge'
 import { Button } from '../components/ui/Button/Button'
 import { Card } from '../components/ui/Card/Card'
@@ -20,7 +21,7 @@ export function QuestDetailPage() {
   const [attempt, setAttempt] = useState(0)
   const returnTo = typeof location.state === 'object' && location.state !== null
     && 'from' in location.state && typeof location.state.from === 'string'
-    ? location.state.from
+    ? safeReturnPath(location.state.from)
     : `/quests${location.search}`
 
   const load = useCallback(async (signal: AbortSignal) => {

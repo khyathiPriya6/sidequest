@@ -3,7 +3,7 @@
 A playful, cross-platform adventure platform for discovering, creating, joining and completing quests. This repository is a **learning-first software engineering project** built incrementally.
 
 ## Project status
-**Sprint 01 — Foundation (in progress).** Work capacity: 8–10 hours/week.
+**Authentication and Quest integration candidate — owner review pending.** The candidate includes session authentication, public quest browsing, and creator draft/publish/archive flows. See the [implementation tracker](docs/planning/IMPLEMENTATION-TRACKER.md) and [pre-testing review](docs/reviews/PRETESTING-REVIEW.md) for branch history, actual test results, and remaining acceptance gates.
 - [Project requirements](docs/requirements/PRD.md)
 - [Architecture](docs/architecture/ARCHITECTURE.md)
 - [Sprint 01 plan](docs/planning/SPRINT-01.md)
@@ -12,12 +12,12 @@ A playful, cross-platform adventure platform for discovering, creating, joining 
 - [Coding agent instructions](AGENTS.md)
 - [GitHub issues / backlog](https://github.com/khyathiPriya6/sidequest/issues)
 
-## Planned stack
+## Stack
 - Web: React, TypeScript, Vite
 - Backend: Java 21, Spring Boot, REST
 - Data: PostgreSQL, Liquibase
 - Mobile (later): React Native + Expo
-- Quality: JUnit, Mockito, Testcontainers, Vitest, Playwright, GitHub Actions
+- Quality: JUnit, Mockito, isolated PostgreSQL integration tests, Vitest, Playwright
 - Cloud (later): Docker, AWS, observability; optional infrastructure only when warranted
 
 ## Development workflow
@@ -34,8 +34,8 @@ A playful, cross-platform adventure platform for discovering, creating, joining 
 ## Getting started
 The UI and API are in `ui/` and `backend/`. Follow [backend setup](backend/README.md) first, then [UI setup](ui/README.md). The UI calls `/api/v1/health` through Vite's configurable proxy and displays loading, online, and retryable error states. Local backend startup and PostgreSQL authentication have been verified with the ignored local configuration; no credentials are committed.
 
-Related integration issue: [SQ-004 / #15](https://github.com/khyathiPriya6/sidequest/issues/15).
+The UI uses real session and Quest APIs. The development-only `/dev/components` gallery retains presentation fixtures. Joining, completing quests, XP awards, and achievements remain outside this implementation.
 
-The [SQ-019 foundation](https://github.com/khyathiPriya6/sidequest/issues/36) adds the dark gaming theme, route shell, responsive navigation, and reusable controls. Run the UI and visit `/dev/components` for a development-only component gallery. Quest CRUD and full product screens remain gated by [UX-006 prototype review](https://github.com/khyathiPriya6/sidequest/issues/35).
+Run `npm test --prefix ui` and `npm run build --prefix ui`. With Java 21, Maven, PostgreSQL binaries and Chrome installed, run `bash backend/scripts/test-postgres.sh` and `bash backend/scripts/test-browser.sh` with `JAVA_HOME` set. Both scripts create isolated test databases; the browser harness starts its own API and Vite server (port 5173 must be free). It explicitly disables importing local database credentials. Never start migrations against an existing database without owner approval.
 
-> Never commit credentials or claim tests ran without evidence. See `AGENTS.md`.
+The real browser journey passes on this candidate, but SQ-018 remains open for owner acceptance. Figma prototype review and outstanding handoff/accessibility checklists remain visible in the tracker; no pixel-perfect design sign-off is claimed.

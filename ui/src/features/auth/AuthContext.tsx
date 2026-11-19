@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { sessionCheckEvent } from '../../lib/api'
 import * as authApi from './authApi'
 import { ApiError, authExpiredEvent, type AuthUser } from './authApi'
 
@@ -15,6 +16,8 @@ interface AuthContextValue {
   register: (credentials: { email: string; username: string; password: string }) => Promise<AuthUser>
   logout: () => Promise<void>
 }
+
+export const beforeSignOutEvent = 'sidequest:before-sign-out'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
@@ -60,8 +63,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       csrfToken.current = null
       setState({ status: 'anonymous' })
     }
+    const verify = async () => {
+      csrfToken.current = null
+      const version = ++authVersion.current
+      try {
+        const user = await authApi.getCurrentUser()
+        if (version === authVersion.current) setState({ status: 'authenticated', user })
+      } catch (error) {
+        if (version !== authVersion.current) return
+        if (error instanceof ApiError && error.status === 401) expire()
+        else setState({ status: 'error', message: 'Your session could not be verified. Restore it before continuing.' })
+      }
+    }
     window.addEventListener(authExpiredEvent, expire)
-    return () => window.removeEventListener(authExpiredEvent, expire)
+    window.addEventListener(sessionCheckEvent, verify)
+    return () => {
+      authVersion.current++
+      window.removeEventListener(authExpiredEvent, expire)
+      window.removeEventListener(sessionCheckEvent, verify)
+    }
   }, [refresh])
 
   const ensureCsrf = useCallback(async () => {
@@ -72,12 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const establish = useCallback(async (authenticate: (token: string) => Promise<AuthUser>) => {
     const user = await authenticate(await ensureCsrf())
-    authVersion.current++
+    const version = ++authVersion.current
     csrfToken.current = null
     setState({ status: 'authenticated', user })
     try {
-      csrfToken.current = (await authApi.getCsrfToken()).csrfToken
+      const token = (await authApi.getCsrfToken()).csrfToken
+      if (version === authVersion.current) csrfToken.current = token
     } catch (error) {
+      if (version !== authVersion.current) return user
       setState({
         status: 'authenticated',
         user,

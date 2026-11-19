@@ -36,3 +36,9 @@ JAVA_HOME=/path/to/java-21 PATH=/path/to/java-21/bin:$PATH bash scripts/test-pos
 The test runner provisions and stops its own fresh UTF-8 PostgreSQL cluster; it does not use the configured developer database. Disabling Liquibase is not a substitute for schema preparation: Hibernate validates the required tables.
 
 The health response reports API availability; it is not a continuous database health probe. See [authentication usage and tests](../docs/implementation/AUTHENTICATION-API.md), [OpenAPI](../docs/api/auth.openapi.yaml), and the [implementation tracker](../docs/planning/IMPLEMENTATION-TRACKER.md).
+
+## Integration review verification
+
+Run `JAVA_HOME=/path/to/jdk21 bash backend/scripts/test-browser.sh` from the repository root for real authentication and Quest browser tests. Set `PG_BIN` if PostgreSQL binaries are not in `/Library/PostgreSQL/18/bin`; Java 21, Maven, Python 3, installed UI dependencies and Chrome are required. The script uses a new loopback-only temporary PostgreSQL cluster and API, disables local configuration imports, and stops only its own services. Logs are preserved in the printed temporary directory. Port 5173 must be free.
+
+The review remediation changes no Liquibase changesets. Draft creation now maps the managed entity returned by `saveAndFlush`, including persistence-generated timestamps. Owner and public pagination reject offsets exceeding the repository's integer offset range. See [review evidence and limitations](../docs/reviews/PRETESTING-REVIEW.md).

@@ -217,7 +217,7 @@ components:
       schema: {type: integer, minimum: 1, maximum: 100, default: 20}
   headers:
     ETag:
-      description: Strong ETag derived from the internal optimistic-lock version.
+      description: Required strong ETag derived from the optimistic-lock version, a quoted canonical decimal from 0 through 9223372036854775807. Clients must reject missing or malformed response tags and reload without automatically replaying mutations.
       schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
   schemas:
     CreateDraft:
@@ -322,7 +322,7 @@ components:
         ETag: {$ref: '#/components/headers/ETag'}
       content: *problem
     PreconditionRequired:
-      description: If-Match is required for draft updates.
+      description: If-Match is required for draft updates, publish, and archive.
       content: *problem
     Invalid:
       description: Domain validation failed; includes field-level errors.

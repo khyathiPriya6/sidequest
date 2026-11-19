@@ -9,9 +9,10 @@ import { RequireAuth } from '../features/auth/RequireAuth'
 import { MyQuestsPage } from '../pages/MyQuestsPage'
 import { QuestDraftPage } from '../pages/QuestDraftPage'
 
-const placeholders = [
-  { path: '/quests/:id', title: 'Quest details', description: 'Quest details will be available when the catalogue opens.' },
-]
+function LegacyQuestDashboardRedirect() {
+  const location = useLocation()
+  return <Navigate to={`/my-quests${location.search}${location.hash}`} replace />
+}
 
 function LegacyQuestDashboardEditRedirect() {
   const { id = '' } = useParams()
@@ -25,7 +26,8 @@ export function createAppRoutes(): RouteObject[] {
       children: [
         { path: '/', element: <Navigate to="/quests" replace /> },
         { path: '/quests', element: <ExploreShell />, handle: { title: 'Explore' } },
-        ...placeholders.map(({ path, title, description }) => ({ path, handle: { title }, element: <FeaturePlaceholder title={title} description={description} /> })),
+        { path: '/quests/:id', element: <QuestDetailPage />, handle: { title: 'Quest details' } },
+        { path: '/my/quests', element: <LegacyQuestDashboardRedirect /> },
         { path: '/login', element: <AuthPage mode="login" />, handle: { title: 'Sign in' } },
         { path: '/register', element: <AuthPage mode="register" />, handle: { title: 'Create an account' } },
         {
