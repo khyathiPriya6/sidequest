@@ -1,40 +1,44 @@
 # Authentication and Quest runtime implementation
 
-Updated 2026-11-18 against `origin/main` at `63c748b`. No existing developer database has been migrated. The pre-existing `ui/test-results/` artifact is preserved.
+Updated 2026-11-18 from latest `main` (`63c748b`). Java 21 is preserved. No existing developer database has been migrated. The pre-existing `ui/test-results/` artifact is preserved.
 
 | Task / issue | Actual repository state | Remaining acceptance work |
 |---|---|---|
-| Auth architecture #39 / PR #40 | Merged into `main` | None for the approved architecture. |
-| Frontend foundation #36 / PR #37 | Merged into `main` | Foundation is present; this does not by itself complete UX sign-off or auth UI #44. |
-| User/session persistence #41 / PR #45 | Merged into `main` | Migrations were verified only on isolated PostgreSQL. |
-| Session security #42 / PR #46 | Runtime integrated on `feat/e03-security-main-integration`; original PR #46's target was the #41 feature branch, not `main`. | Integration PR to `main`; private Quest 404 behavior requires later service/API integration tests. |
-| Authentication APIs #43 / PR #47 | Original code is on `feat/e03-authentication-api`; original PR #47's target was the #42 feature branch. | Integrate security first, then API runtime as a separate issue-linked branch/PR. |
-| Authentication UI #44 | Not started | Depends on #43 runtime and approved registration design with username field/error states. |
+| Auth architecture #39 / PR #40 | Merged into `main` | Complete. |
+| Frontend foundation #36 / PR #37 | Merged into `main` | Foundation is available. |
+| User/session persistence #41 / PR #45 | Merged into `main` | Isolated PostgreSQL migration tests passed. |
+| Session security #42 / PR #46 | Being integrated on `feat/e03-security-main-integration`; original PR #46 targeted a feature branch instead of `main`. PR #49 contains the mainline integration. | PR #49 is open. Private Quest 404 is verified with the protected Quest service in subsequent API tests. |
+| Authentication APIs #43 / PR #47 | Integrated on `feat/e03-authentication-main-integration` over the #42 integration branch. | PR to the #42 integration branch is open; do not merge on the owner's behalf. |
+| Authentication UI #44 | Implemented on `feat/e03-auth-ui` over the #43 integration branch. | PR #51 is open against the #43 integration branch; do not merge on the owner's behalf. |
 | SQ-009 #20 / PR #48 | Merged into `main` at `63c748b` | Complete. |
-| SQ-010 #21 | Not started | Requires #20, authenticated principal/security and existing design gate for Quest CRUD/product UI. |
-| SQ-011 #22 | Not started | Requires draft API #21. |
-| SQ-012/013 #23–24 | Not started | Require #20; public catalogue reads can be implemented separately from protected writes. |
-| SQ-014 #25 | Not started | Requires catalogue API #23/#24 and UX-001–006 handoff. |
-| SQ-015–017 #26–28 | Not started | Depend on their respective APIs, shared auth UI and UX-001–006 handoff. |
-| SQ-018 #29 | Not started | Requires the complete real auth/API/UI journey and two-user plus anonymous tests. |
+| SQ-010 #21 | Implemented and pushed on `feat/sq-010-draft-api`; PR creation is pending authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/e03-authentication-main-integration...feat/sq-010-draft-api?expand=1). Draft CRUD, owner list/detail, validation, privacy, pagination, CSRF, and ETag behavior tested on isolated PostgreSQL. |
+| SQ-011 #22 | Implemented on `feat/sq-011-lifecycle-api`; isolated validation passed. PR creation requires authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/sq-010-draft-api...feat/sq-011-lifecycle-api?expand=1). Publish/archive, publication validation, ownership, idempotent retries, and concurrent transition tests are complete on this branch. |
+| SQ-012 #23 | Implemented on `feat/sq-012-public-catalogue`; isolated validation passed. PR creation requires authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/sq-011-lifecycle-api...feat/sq-012-public-catalogue?expand=1). Published-only list/detail, privacy, pagination, deterministic ordering, malformed IDs, and boundary tests complete. |
+| SQ-013 #24 | Implemented on `feat/sq-013-search-filter`; user-selected semantics and isolated validation recorded. PR creation requires authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/sq-012-public-catalogue...feat/sq-013-search-filter?expand=1). Case-insensitive literal search, exact filters, bounded query, and injection/wildcard/pagination tests complete. |
+| SQ-014 #25 | Implemented and pushed on `feat/sq-014-public-ui`; [PR #52](https://github.com/khyathiPriya6/sidequest/pull/52) is open against the SQ-013 branch. | Public Explore and Quest detail screens, URL-backed search/category/difficulty/page state, loading/empty/error states, responsive layouts, and keyboard navigation are implemented and tested. Continue with SQ-015 without waiting for PR approval; do not merge on the owner's behalf. |
+| SQ-015 #26 | Implemented and pushed on `feat/sq-015-creator-dashboard`; [PR #53](https://github.com/khyathiPriya6/sidequest/pull/53) is open against the authentication UI branch. | Owner-only quest dashboard, status filters, pagination, draft edit navigation, published/archived read navigation, loading/empty/error states. Authentication UI dependency integrated. |
+| SQ-016 #27 | Implemented and pushed on `feat/sq-016-draft-form`; [PR #54](https://github.com/khyathiPriya6/sidequest/pull/54) is open against the SQ-015 branch. | Protected draft create/edit form, draft-only owner loading, validation, field-error mapping, unsaved state, duplicate-submit prevention, and ETag stale-update handling. |
+| SQ-017 #28 | In progress on `feat/sq-017-lifecycle-ui` | Draft publish action, accessible archive confirmation, publication validation/errors, lifecycle state refresh, and repeat/conflict handling. |
+| SQ-018 #29 | Not started | Real end-to-end journey with two users and anonymous access. |
 
 ## Approval, design, and environment evidence
 
 - The owner authorized migrations only on newly created isolated PostgreSQL test databases in [issue #41's approval comment](https://github.com/khyathiPriya6/sidequest/issues/41#issuecomment-6968296428). No existing database may be migrated under that approval.
 - PRs #40, #37, #45, and #48 are merged into `main`.
-- PRs #46/#47 are marked merged by GitHub but their bases were feature branches, so their changes did not reach `main`. Their commit history is being integrated issue-by-issue to preserve scope.
-- The user supplied the Figma design link as approved for implementation. The earlier UX issue comments still list owner sign-off incomplete and the registration design missing the approved username states; auth UI work should conform to the provided Figma and approved contract rather than invent a new style.
-- Quest CRUD/product UI remains subject to the existing UX-001–006 design-first gate. The user asked not to wait for PR approval; work can proceed on separate branches/PRs without merging any PR on the user's behalf.
+- PRs #46/#47 are marked merged by GitHub but were merged into stacked feature branches. Their runtime code is being integrated into mainline branches per issue rather than assumed present.
+- For #44, the user explicitly approved the linked Figma visual direction and the minimal required username/help/error-state addition. UX-001–006 GitHub issues still show incomplete handoff checklists; the Figma page itself was not readable to local tools, so no pixel-level parity is claimed.
+- No PR is merged by the assistant. Work continues on dedicated issue branches and dependent PRs.
 
 ## Validation evidence
 
-Latest direct main validation before integrating #42:
+- `cd ui && npm test` — passed, 31 tests across 5 files (before current auth UI work).
+- `cd ui && npm run build` — passed (before current auth UI work).
+- `cd ui && npm test` — authentication UI validation passed: 46 tests across 7 files.
+- `cd ui && npm run build` — authentication UI TypeScript check and Vite production build passed.
+- `AUTH_E2E=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e -- --workers=1 --output="$OUTPUT"` with a temporary output directory — 9 browser tests passed, including real session-cookie authentication against a fresh isolated PostgreSQL-backed API and viewport/a11y checks at 320, 390, 768, and 1440 pixels.
+- `cd backend && JAVA_HOME=/private/tmp/jdk-21.0.13+9/Contents/Home PATH=/private/tmp/jdk-21.0.13+9/Contents/Home/bin:$PATH bash scripts/test-postgres.sh` — SQ-009 passed: 13 tests, zero failures/errors/skips, fresh isolated UTF-8 PostgreSQL 18.4 cluster.
+- On the #42 integration branch the same isolated command passed with 12 tests (6 unit + 6 PostgreSQL integration tests), zero failures/errors/skips.
+- On the #43 integration branch the same command passed with 26 tests (9 unit + 17 PostgreSQL integration tests), zero failures/errors/skips. It includes a real HTTP server with PostgreSQL-backed cookie registration, login, session restore, CSRF, logout, security filters, and persistence coverage.
+- No existing database has been used or modified. The authentication browser flow is verified; Quest APIs, Quest UI, and the full Quest journey remain incomplete.
 
-- `cd ui && npm test` — passed, 31 tests across 5 files.
-- `cd ui && npm run build` — passed, TypeScript and Vite production build.
-- `cd backend && JAVA_HOME=/private/tmp/jdk-21.0.13+9/Contents/Home PATH=/private/tmp/jdk-21.0.13+9/Contents/Home/bin:$PATH bash scripts/test-postgres.sh` — passed on SQ-009 work, 13 tests, zero failures/errors/skips, fresh isolated UTF-8 PostgreSQL 18.4 cluster.
-- On the security integration branch, the same isolated command passed with 12 tests (6 unit + 6 PostgreSQL integration tests), zero failures/errors/skips; this included Spring Security route, cookie, CSRF, account-revocation, and Quest persistence tests.
-- Liquibase initially applied four changesets and applied zero on repeat. No existing database was used.
-- Auth browser UI, Quest HTTP endpoints, and full Quest E2E have not yet been implemented or verified.
-
-Learning notes: [identity persistence](../implementation/IDENTITY-PERSISTENCE.md), [session security](../implementation/SESSION-SECURITY.md), and [Quest persistence](../implementation/QUEST-PERSISTENCE.md).
+Learning notes: [identity persistence](../implementation/IDENTITY-PERSISTENCE.md), [session security](../implementation/SESSION-SECURITY.md), [authentication API](../implementation/AUTHENTICATION-API.md), [Quest persistence](../implementation/QUEST-PERSISTENCE.md), [Quest draft API](../implementation/QUEST-DRAFT-API.md), [Quest lifecycle API](../implementation/QUEST-LIFECYCLE-API.md), [Quest public catalogue](../implementation/QUEST-PUBLIC-CATALOGUE.md), [Quest search API](../implementation/QUEST-SEARCH-API.md), and [Quest public UI](../implementation/QUEST-PUBLIC-UI.md).

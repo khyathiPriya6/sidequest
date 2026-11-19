@@ -2,8 +2,36 @@ import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 test.beforeEach(async ({ page }) => {
-  // Component/browser tests use a deterministic health response; live proxy is checked separately.
+  // Component/browser tests use deterministic API responses; live proxy is checked separately.
   await page.route('**/api/v1/health', route => route.fulfill({ json: { status: 'UP', service: 'sidequest-api' } }))
+  await page.route('**/api/v1/auth/csrf', route => route.fulfill({ json: { csrfToken: 'test-token' } }))
+  await page.route('**/api/v1/auth/me', route => route.fulfill({
+    status: 401,
+    json: { status: 401, title: 'Unauthorized', detail: 'Authentication is required.', code: 'unauthenticated' },
+  }))
+  await page.route('**/api/v1/quests**', route => {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/api/v1/quests/quest-e2e') {
+      return route.fulfill({ json: {
+        id: 'quest-e2e', creatorId: 'creator-e2e', title: 'Explore a nearby trail',
+        description: 'Take a walk along a route you have not tried before.',
+        category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 50, status: 'PUBLISHED',
+        createdAt: '2025-01-01T10:00:00Z', updatedAt: '2025-01-01T10:00:00Z',
+        publishedAt: '2025-01-01T10:00:00Z', archivedAt: null,
+      } })
+    }
+    return route.fulfill({ json: {
+      content: [{
+        id: 'quest-e2e', creatorId: 'creator-e2e', title: 'Explore a nearby trail',
+        description: 'Take a walk along a route you have not tried before.',
+        category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 50, status: 'PUBLISHED',
+        createdAt: '2025-01-01T10:00:00Z', updatedAt: '2025-01-01T10:00:00Z',
+        publishedAt: '2025-01-01T10:00:00Z', archivedAt: null,
+      }],
+      page: Number(url.searchParams.get('page') ?? 0), size: 20,
+      totalElements: 1, totalPages: 1, hasNext: false, hasPrevious: false,
+    } })
+  })
 })
 
 for (const width of [320, 390, 768, 1440]) {
@@ -53,20 +81,37 @@ test('dialog contains focus, blocks background interaction, and restores focus o
   await expect(trigger).toBeFocused()
 })
 
-test('deep links refresh, static routes win, and history restores the route', async ({ page }) => {
+test('protected deep links redirect to auth and history restores the route', async ({ page }) => {
   await page.goto('/quests/new')
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Create a quest', exact: true })).toBeVisible()
-  await page.getByRole('link', { name: 'Back to Explore' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  await page.getByRole('link', { name: 'Explore' }).first().click()
   await expect(page).toHaveURL(/\/quests$/)
   await expect(page.getByRole('heading', { name: 'Make today a quest.' })).toBeVisible()
   await expect(page.getByRole('main')).toBeFocused()
   await page.goBack()
-  await expect(page.getByRole('heading', { name: 'Create a quest', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
   await expect(page.getByRole('main')).toBeFocused()
-  await expect(page).toHaveTitle('Create a quest · SideQuest')
+  await expect(page).toHaveTitle('Sign in · SideQuest')
   await page.goto('/does-not-exist')
   await expect(page.getByRole('heading', { name: 'That page isn’t here.' })).toBeVisible()
+})
+
+test('public quest details are reachable by keyboard and retain the Explore filters on return', async ({ page }) => {
+  await page.goto('/quests?q=trail&category=ADVENTURE')
+  const questLink = page.getByRole('link', { name: 'Explore a nearby trail' })
+  await expect(questLink).toBeVisible()
+  await questLink.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/quests\/quest-e2e\?q=trail&category=ADVENTURE/)
+  await expect(page.getByRole('heading', { name: 'Explore a nearby trail' })).toBeVisible()
+  await page.getByRole('link', { name: 'Back to Explore' }).click()
+  await expect(page).toHaveURL(/\/quests\?q=trail&category=ADVENTURE/)
+  await expect(page.getByRole('searchbox', { name: 'Search quests' })).toHaveValue('trail')
 })
 
 test('reduced motion and doubled text remain usable', async ({ page }) => {

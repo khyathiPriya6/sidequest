@@ -7,5 +7,5 @@ export const navigation = [
   { to: '/profile', label: 'Profile', icon: UserRound, memberOnly: true },
 ] as const
 
-// Presentation only. member-preview is used exclusively by the development gallery.
-export type NavigationMode = 'guest' | 'member-preview'
+// member-preview is used exclusively by the development gallery.
+export type NavigationMode = 'guest' | 'authenticated' | 'member-preview'
