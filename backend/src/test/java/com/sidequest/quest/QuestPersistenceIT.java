@@ -204,7 +204,7 @@ class QuestPersistenceIT {
                 var statement = connection.createStatement();
                 var rows = statement.executeQuery("SELECT count(*) FROM databasechangelog")) {
             rows.next();
-            assertThat(rows.getInt(1)).isEqualTo(4);
+            assertThat(rows.getInt(1)).isEqualTo(7);
         }
     }
 
