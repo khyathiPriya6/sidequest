@@ -20,6 +20,7 @@ class ParticipationTest {
                 "A valid quest title", "A valid quest description.",
                 QuestCategory.ADVENTURE, QuestDifficulty.EASY, 250);
 
+        com.sidequest.quest.QuestFixtures.published(quest);
         Participation participation = Participation.join(user, quest);
 
         assertThat(participation.getId()).isNotNull();
@@ -38,6 +39,7 @@ class ParticipationTest {
                 User.create("creator2@example.test", "quest_creator2", HASH),
                 "A valid quest title", "A valid quest description.",
                 QuestCategory.LEARNING, QuestDifficulty.MEDIUM, 100);
+        com.sidequest.quest.QuestFixtures.published(quest);
         Participation participation = Participation.join(user, quest);
 
         assertThatThrownBy(() -> participation.complete(participation.getJoinedAt().minusSeconds(1)))
@@ -60,5 +62,33 @@ class ParticipationTest {
                 User.create("creator3@example.test", "quest_creator3", HASH),
                 "A valid quest title", null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+    @Test
+    void rejectsDraftArchivedAndCreatorEnrollment() {
+        User creator = User.create("creator@example.test", "creator", HASH);
+        User player = User.create("player@example.test", "player", HASH);
+        Quest quest = Quest.create(creator, "Eligible quest", "A valid description.",
+                QuestCategory.LEARNING, QuestDifficulty.EASY, 100);
+        assertThatThrownBy(() -> Participation.join(player, quest))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("Only published quests can be joined");
+        com.sidequest.quest.QuestFixtures.published(quest);
+        assertThatThrownBy(() -> Participation.join(creator, quest))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("Creators cannot join their own quests");
+        com.sidequest.quest.QuestFixtures.archived(quest);
+        assertThatThrownBy(() -> Participation.join(player, quest))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("Only published quests can be joined");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {1, 1000})
+    void acceptsRewardBoundariesAndCompletionAtJoinTime(int reward) {
+        User creator = User.create("creator@example.test", "creator", HASH);
+        User player = User.create("player@example.test", "player", HASH);
+        Quest quest = com.sidequest.quest.QuestFixtures.published(Quest.create(creator,
+                "Boundary quest", "A valid description.", QuestCategory.LEARNING, QuestDifficulty.EASY, reward));
+        Participation participation = Participation.join(player, quest);
+        participation.complete(participation.getJoinedAt());
+        assertThat(participation.getRewardXp()).isEqualTo(reward);
+        assertThat(participation.getCompletedAt()).isEqualTo(participation.getJoinedAt());
     }
 }

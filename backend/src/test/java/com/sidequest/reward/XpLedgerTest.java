@@ -21,6 +21,7 @@ class XpLedgerTest {
                 User.create("creator@example.test", "reward_creator", HASH),
                 "A valid quest title", "A valid quest description.",
                 QuestCategory.FITNESS, QuestDifficulty.MEDIUM, 175);
+        com.sidequest.quest.QuestFixtures.published(quest);
         Participation participation = Participation.join(participant, quest);
         participation.complete(participation.getJoinedAt().plusSeconds(30));
 
@@ -39,6 +40,7 @@ class XpLedgerTest {
                 User.create("creator2@example.test", "reward_creator2", HASH),
                 "A valid quest title", "A valid quest description.",
                 QuestCategory.SOCIAL, QuestDifficulty.EASY, 50);
+        com.sidequest.quest.QuestFixtures.published(quest);
         Participation participation = Participation.join(participant, quest);
 
         assertThatThrownBy(() -> XpLedger.award(participation, Instant.now()))

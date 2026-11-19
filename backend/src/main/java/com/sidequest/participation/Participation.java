@@ -2,6 +2,7 @@ package com.sidequest.participation;
 
 import com.sidequest.identity.User;
 import com.sidequest.quest.Quest;
+import com.sidequest.quest.QuestStatus;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Objects;
@@ -39,6 +40,13 @@ public class Participation {
     public static Participation join(User user, Quest quest) {
         Objects.requireNonNull(user, "user is required");
         Objects.requireNonNull(quest, "quest is required");
+        // Defensive domain check; the Join service must recheck under the Quest row lock.
+        if (quest.getStatus() != QuestStatus.PUBLISHED) {
+            throw new IllegalArgumentException("Only published quests can be joined");
+        }
+        if (user.getId().equals(quest.getCreatorId())) {
+            throw new IllegalArgumentException("Creators cannot join their own quests");
+        }
         if (quest.getRewardXp() == null) {
             throw new IllegalArgumentException("A published quest reward is required for participation");
         }

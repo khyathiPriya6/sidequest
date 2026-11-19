@@ -20,8 +20,8 @@ public interface ParticipationRepository extends JpaRepository<Participation, UU
     Page<Participation> findAllByUser_IdAndStatus(UUID userId, ParticipationStatus status, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select p from Participation p where p.id = :id")
-    Optional<Participation> findByIdForUpdate(@Param("id") UUID id);
+    @Query("select p from Participation p where p.id = :id and p.user.id = :userId")
+    Optional<Participation> findByIdAndUserForUpdate(@Param("id") UUID id, @Param("userId") UUID userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Participation p where p.user.id = :userId and p.quest.id = :questId")
