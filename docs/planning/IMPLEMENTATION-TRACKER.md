@@ -32,7 +32,7 @@ Learning notes: [identity persistence](../implementation/IDENTITY-PERSISTENCE.md
 
 ## E04-02 participation persistence remediation — #59 (2026-11-19)
 
-Existing branch: `feat/e04-02-participation-persistence`; PR targets main (link to be recorded after creation). Removed duplicate test helpers; corrected transaction visibility and exact PostgreSQL diagnostics; enforced published/noncreator enrollment; added owner-scoped participation and Quest locking primitives; added corrective migration 007 for immutable completion and trigger diagnostics. Existing applied changesets and Quest editing restrictions remain unchanged. No Join/Complete services or subsequent features implemented.
+Existing branch: `feat/e04-02-participation-persistence`; [PR #60](https://github.com/khyathiPriya6/sidequest/pull/60) targets main. Removed duplicate test helpers; corrected transaction visibility and exact PostgreSQL diagnostics; enforced published/noncreator enrollment; added owner-scoped participation and Quest locking primitives; added corrective migration 007 for immutable completion and trigger diagnostics. Existing applied changesets and Quest editing restrictions remain unchanged. No Join/Complete services or subsequent features implemented.
 
 Java 21.0.13.1 / Maven 3.9.16 / PostgreSQL 18.4: test compilation passed; **17 unit + 35 integration tests passed, zero failures/errors/skips**. All existing backend regressions included. Fresh migrations apply seven changesets; repeat applies zero. Exact commands, initial failures, limitations, rollback considerations and three interview questions: [participation persistence notes](../implementation/PARTICIPATION-PERSISTENCE.md).
 
