@@ -4,6 +4,29 @@ import AxeBuilder from '@axe-core/playwright'
 test.beforeEach(async ({ page }) => {
   // Component/browser tests use a deterministic health response; live proxy is checked separately.
   await page.route('**/api/v1/health', route => route.fulfill({ json: { status: 'UP', service: 'sidequest-api' } }))
+  await page.route('**/api/v1/quests**', route => {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/api/v1/quests/quest-e2e') {
+      return route.fulfill({ json: {
+        id: 'quest-e2e', creatorId: 'creator-e2e', title: 'Explore a nearby trail',
+        description: 'Take a walk along a route you have not tried before.',
+        category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 50, status: 'PUBLISHED',
+        createdAt: '2025-01-01T10:00:00Z', updatedAt: '2025-01-01T10:00:00Z',
+        publishedAt: '2025-01-01T10:00:00Z', archivedAt: null,
+      } })
+    }
+    return route.fulfill({ json: {
+      content: [{
+        id: 'quest-e2e', creatorId: 'creator-e2e', title: 'Explore a nearby trail',
+        description: 'Take a walk along a route you have not tried before.',
+        category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 50, status: 'PUBLISHED',
+        createdAt: '2025-01-01T10:00:00Z', updatedAt: '2025-01-01T10:00:00Z',
+        publishedAt: '2025-01-01T10:00:00Z', archivedAt: null,
+      }],
+      page: Number(url.searchParams.get('page') ?? 0), size: 20,
+      totalElements: 1, totalPages: 1, hasNext: false, hasPrevious: false,
+    } })
+  })
 })
 
 for (const width of [320, 390, 768, 1440]) {
@@ -67,6 +90,19 @@ test('deep links refresh, static routes win, and history restores the route', as
   await expect(page).toHaveTitle('Create a quest · SideQuest')
   await page.goto('/does-not-exist')
   await expect(page.getByRole('heading', { name: 'That page isn’t here.' })).toBeVisible()
+})
+
+test('public quest details are reachable by keyboard and retain the Explore filters on return', async ({ page }) => {
+  await page.goto('/quests?q=trail&category=ADVENTURE')
+  const questLink = page.getByRole('link', { name: 'Explore a nearby trail' })
+  await expect(questLink).toBeVisible()
+  await questLink.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/quests\/quest-e2e\?q=trail&category=ADVENTURE/)
+  await expect(page.getByRole('heading', { name: 'Explore a nearby trail' })).toBeVisible()
+  await page.getByRole('link', { name: 'Back to Explore' }).click()
+  await expect(page).toHaveURL(/\/quests\?q=trail&category=ADVENTURE/)
+  await expect(page.getByRole('searchbox', { name: 'Search quests' })).toHaveValue('trail')
 })
 
 test('reduced motion and doubled text remain usable', async ({ page }) => {
