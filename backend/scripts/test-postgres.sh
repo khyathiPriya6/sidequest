@@ -12,4 +12,5 @@ trap cleanup EXIT
 "$PG_BIN/pg_ctl" -D "$test_root/data" -l "$test_root/server.log" -o "-h 127.0.0.1 -p $test_port -k $test_root" -w start
 "$PG_BIN/createdb" -h 127.0.0.1 -p "$test_port" -U sidequest_test sidequest_isolated_test
 echo "Isolated PostgreSQL logs: $test_root"
-mvn -Ppostgres-it -Dsidequest.test.jdbc-url="jdbc:postgresql://127.0.0.1:$test_port/sidequest_isolated_test" verify "$@"
+# Bound each cached Spring test context pool as the regression suite grows.
+mvn -Ppostgres-it -Dspring.datasource.hikari.maximum-pool-size=4 -Dspring.datasource.hikari.minimum-idle=1 -Dsidequest.test.jdbc-url="jdbc:postgresql://127.0.0.1:$test_port/sidequest_isolated_test" verify "$@"

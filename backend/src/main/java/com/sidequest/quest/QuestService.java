@@ -86,7 +86,7 @@ class QuestService {
 
     @Transactional
     VersionedQuest archive(UUID creatorId, UUID id, String ifMatch) {
-        Quest quest = ownedQuest(creatorId, id);
+        Quest quest = quests.findByIdAndCreatorForUpdate(id, creatorId).orElseThrow(QuestApiFailure::notFound);
         long suppliedVersion = parseIfMatch(ifMatch);
         if (quest.getStatus() == QuestStatus.ARCHIVED) return versioned(quest);
         if (quest.getStatus() != QuestStatus.DRAFT && quest.getStatus() != QuestStatus.PUBLISHED) {

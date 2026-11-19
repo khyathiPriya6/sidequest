@@ -59,7 +59,7 @@ public class Participation {
         participation.quest = quest;
         participation.status = ParticipationStatus.IN_PROGRESS;
         participation.rewardXp = quest.getRewardXp();
-        participation.joinedAt = Instant.now();
+        participation.joinedAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         participation.completedAt = null;
         return participation;
     }
