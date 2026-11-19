@@ -209,6 +209,42 @@ export async function updateQuestDraft(id: string, input: QuestDraftInput, etag:
   return { quest: body, etag: response.headers.get('ETag') ?? etag }
 }
 
+export async function publishQuest(id: string, etag: string, csrfToken: string): Promise<QuestMutationResult> {
+  const response = await fetch(`/api/v1/quests/${encodeURIComponent(id)}/publish`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json, application/problem+json',
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'If-Match': etag,
+    },
+    body: '{}',
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok) throw problemError(response.status, body)
+  if (!isQuest(body)) throw new QuestApiError(502, 'The quest service returned an unexpected response.', 'invalid_response')
+  return { quest: body, etag: response.headers.get('ETag') ?? etag }
+}
+
+export async function archiveQuest(id: string, etag: string, csrfToken: string): Promise<QuestMutationResult> {
+  const response = await fetch(`/api/v1/quests/${encodeURIComponent(id)}/archive`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json, application/problem+json',
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'If-Match': etag,
+    },
+    body: '{}',
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok) throw problemError(response.status, body)
+  if (!isQuest(body)) throw new QuestApiError(502, 'The quest service returned an unexpected response.', 'invalid_response')
+  return { quest: body, etag: response.headers.get('ETag') ?? etag }
+}
+
 export function displayEnum(value: string | null): string {
   if (value === null) return 'Not specified'
   return value.charAt(0) + value.slice(1).toLowerCase()

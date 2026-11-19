@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
@@ -14,6 +14,8 @@ const draft: Quest = {
 }
 const published: Quest = { ...draft, id: 'published-1', title: 'Published walk', status: 'PUBLISHED', publishedAt: '2025-01-02T10:00:00Z' }
 const archived: Quest = { ...draft, id: 'archived-1', title: 'Archived walk', status: 'ARCHIVED', archivedAt: '2025-01-03T10:00:00Z' }
+let draftPublished = false
+let publishedArchived = false
 
 function page(content: Quest[], extras: Partial<QuestPage> = {}): QuestPage {
   return { content, page: 0, size: 20, totalElements: content.length, totalPages: content.length ? 1 : 0,
@@ -26,7 +28,10 @@ function renderAt(path: string) {
   return router
 }
 
-beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+beforeEach(() => {
+  draftPublished = false
+  publishedArchived = false
+  vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
   const url = new URL(String(input), 'http://localhost')
   if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
   if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
@@ -36,18 +41,38 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
     const status = url.searchParams.get('status')
     const pageNumber = Number(url.searchParams.get('page') ?? 0)
     if (pageNumber > 0) return Promise.resolve(Response.json(page([published], { page: pageNumber, totalElements: 21, totalPages: 2, hasNext: false, hasPrevious: true })))
-    if (status === 'DRAFT') return Promise.resolve(Response.json(page([draft])))
-    if (status === 'PUBLISHED') return Promise.resolve(Response.json(page([published])))
+    if (status === 'DRAFT') return Promise.resolve(Response.json(page(draftPublished ? [] : [draft])))
+    if (status === 'PUBLISHED') return Promise.resolve(Response.json(page(publishedArchived ? [] : [published])))
     if (status === 'ARCHIVED') return Promise.resolve(Response.json(page([archived])))
-    return Promise.resolve(Response.json(page([draft, published, archived], {
+    return Promise.resolve(Response.json(page([
+      ...(draftPublished ? [] : [draft]),
+      ...(publishedArchived ? [] : [published]),
+      archived,
+    ], {
       totalElements: 21,
       totalPages: 2,
       hasNext: true,
     })))
   }
+  if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
+  if (url.pathname === `/api/v1/me/quests/${draft.id}`) {
+    return Promise.resolve(Response.json(draft, { headers: { ETag: '"3"' } }))
+  }
+  if (url.pathname === `/api/v1/me/quests/${published.id}`) {
+    return Promise.resolve(Response.json(published, { headers: { ETag: '"4"' } }))
+  }
+  if (url.pathname === `/api/v1/quests/${draft.id}/publish`) {
+    draftPublished = true
+    return Promise.resolve(Response.json({ ...draft, status: 'PUBLISHED', publishedAt: '2025-01-04T10:00:00Z' }, { headers: { ETag: '"4"' } }))
+  }
+  if (url.pathname === `/api/v1/quests/${published.id}/archive`) {
+    publishedArchived = true
+    return Promise.resolve(Response.json({ ...published, status: 'ARCHIVED', archivedAt: '2025-01-04T10:00:00Z' }, { headers: { ETag: '"5"' } }))
+  }
   if (url.pathname === '/api/v1/health') return Promise.resolve(Response.json({ status: 'UP', service: 'sidequest-api' }))
   return Promise.resolve(Response.json({}, { status: 404 }))
-})))
+  }))
+})
 
 it('shows only the owner endpoint results and exposes draft-only edit navigation', async () => {
   const router = renderAt('/my-quests')
@@ -109,4 +134,21 @@ it('shows empty and error states and retries service failures', async () => {
   fail = false
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await screen.findByRole('heading', { name: 'Draft walk' })).toBeVisible()
+})
+
+it('publishes a draft and confirms or cancels archive actions', async () => {
+  const user = userEvent.setup()
+  renderAt('/my-quests')
+  await screen.findByRole('heading', { name: 'Draft walk' })
+  await user.click(screen.getByRole('button', { name: 'Publish' }))
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Draft walk' })).not.toBeInTheDocument())
+
+  await screen.findByRole('heading', { name: 'Published walk' })
+  await user.click(screen.getByRole('button', { name: 'Archive' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Archive this quest?' })
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog', { name: 'Archive this quest?' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Archive' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Archive this quest?' })).getByRole('button', { name: 'Confirm archive' }))
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Published walk' })).not.toBeInTheDocument())
 })

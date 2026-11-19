@@ -15,6 +15,9 @@
 .empty { justify-items: center; text-align: center; }
 .pagination { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
 .pagination span { min-height: 44px; display: inline-flex; align-items: center; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.modalActions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+.actionError { color: var(--color-danger); font-size: var(--text-sm); }
 @media (max-width: 35rem) {
   .header { align-items: start; flex-direction: column; }
   .create { width: 100%; }
