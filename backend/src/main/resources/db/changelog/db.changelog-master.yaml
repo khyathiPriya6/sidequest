@@ -10,3 +10,7 @@ databaseChangeLog:
       file: db/changelog/002-identity.sql
   - include:
       file: db/changelog/004-quests.sql
+  - include:
+      file: db/changelog/005-participations.sql
+  - include:
+      file: db/changelog/006-xp-ledger.sql
