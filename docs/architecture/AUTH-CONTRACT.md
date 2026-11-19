@@ -1,6 +1,6 @@
 # E03 — Authentication API and security boundaries
 
-**Status:** Session and registration policies approved; runtime/security integration is in open PRs #49 and #50, and the browser UI is being implemented for issue #44
+**Status:** Session and registration policies approved; runtime/security/UI integration is in open PRs #49, #50, and #51.
 **Issue:** [#39 — E03-ARCH](https://github.com/khyathiPriya6/sidequest/issues/39)
 **Scope:** Policy and wire-contract authority for the implemented session endpoints and browser client.
 
