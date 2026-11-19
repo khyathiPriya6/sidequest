@@ -17,7 +17,8 @@ Updated 2026-11-18 from latest `main` (`63c748b`). Java 21 is preserved. No exis
 | SQ-013 #24 | Implemented on `feat/sq-013-search-filter`; user-selected semantics and isolated validation recorded. PR creation requires authenticated GitHub UI access. | [Open the comparison to create the PR](https://github.com/khyathiPriya6/sidequest/compare/feat/sq-012-public-catalogue...feat/sq-013-search-filter?expand=1). Case-insensitive literal search, exact filters, bounded query, and injection/wildcard/pagination tests complete. |
 | SQ-014 #25 | Implemented and pushed on `feat/sq-014-public-ui`; [PR #52](https://github.com/khyathiPriya6/sidequest/pull/52) is open against the SQ-013 branch. | Public Explore and Quest detail screens, URL-backed search/category/difficulty/page state, loading/empty/error states, responsive layouts, and keyboard navigation are implemented and tested. Continue with SQ-015 without waiting for PR approval; do not merge on the owner's behalf. |
 | SQ-015 #26 | Implemented and pushed on `feat/sq-015-creator-dashboard`; [PR #53](https://github.com/khyathiPriya6/sidequest/pull/53) is open against the authentication UI branch. | Owner-only quest dashboard, status filters, pagination, draft edit navigation, published/archived read navigation, loading/empty/error states. Authentication UI dependency integrated. |
-| SQ-016–017 #27–28 | Not started | Draft forms, preview, publish/archive UI. |
+| SQ-016 #27 | Implemented and pushed on `feat/sq-016-draft-form`; [PR #54](https://github.com/khyathiPriya6/sidequest/pull/54) is open against the SQ-015 branch. | Protected draft create/edit form, draft-only owner loading, validation, field-error mapping, unsaved state, duplicate-submit prevention, and ETag stale-update handling. |
+| SQ-017 #28 | Not started | Publish/archive UI. |
 | SQ-018 #29 | Not started | Real end-to-end journey with two users and anonymous access. |
 
 ## Approval, design, and environment evidence
