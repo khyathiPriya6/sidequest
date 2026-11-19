@@ -29,7 +29,7 @@ Later: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/que
 
 The proposed Quest fields, lifecycle, validation, ownership rules, and API shapes are documented in [the SQ-008 Quest contract](./QUEST-CONTRACT.md). That design does not implement APIs or migrations and depends on identity work before protected endpoints can ship.
 
-Shared REST, error, pagination, timestamp, and OpenAPI planning conventions are documented in [API conventions](./API-CONVENTIONS.md); these remain a proposed baseline pending review before CRUD implementation.
+Shared REST, error, pagination, timestamp, and OpenAPI conventions are documented in [API conventions](./API-CONVENTIONS.md). The first business APIs adopt these conventions and use the hand-maintained OpenAPI 3.1 files as their source of truth.
 
 The owner-approved E03 session architecture and proposed route/security boundaries are documented in [ADR 0002](../decisions/0002-authentication-and-sessions.md) and the [authentication API contract](./AUTH-CONTRACT.md). Remaining API-policy details and implementation are not approved by this documentation change.
 

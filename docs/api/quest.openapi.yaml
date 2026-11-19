@@ -1,0 +1,329 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Quest API
+  version: 1.0.0
+  description: SQ-010 draft CRUD, SQ-011 lifecycle transitions, SQ-012 public catalogue/details, and owner-only reads. Search filters are added in SQ-013.
+servers:
+  - url: /
+paths:
+  /api/v1/quests:
+    get:
+      operationId: listPublishedQuests
+      security: []
+      description: Returns published quests only, ordered by createdAt descending and then id descending.
+      parameters:
+        - name: q
+          in: query
+          description: Case-insensitive literal substring in title or description. Trimmed; blank is ignored. Percent and underscore are literal.
+          schema: {type: string, maxLength: 120}
+        - name: category
+          in: query
+          schema: {$ref: '#/components/schemas/QuestCategory'}
+        - name: difficulty
+          in: query
+          schema: {$ref: '#/components/schemas/QuestDifficulty'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Published-only paginated collection; totalElements and totalPages exclude private and archived quests.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestPage'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
+    post:
+      operationId: createQuestDraft
+      security: [{sessionCookie: [], csrfHeader: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateDraft'}
+            example: {title: Explore a new walking route}
+      responses:
+        '201':
+          description: Draft created for the authenticated creator.
+          headers:
+            Location: {schema: {type: string}}
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '422': {$ref: '#/components/responses/Invalid'}
+  /api/v1/quests/{id}:
+    get:
+      operationId: getPublishedQuest
+      security: [{sessionCookie: []}, {}]
+      description: Published quests are public. A creator may also read their own draft or archived quest; others receive the same 404 as for a missing ID.
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+      responses:
+        '200':
+          description: Published quest or private quest owned by the authenticated creator.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      operationId: updateQuestDraft
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag returned with the quest.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PatchDraft'}
+            example: {title: Revised walking route, description: A description long enough to save.}
+      responses:
+        '200':
+          description: Updated draft. Omitted fields are unchanged; null clears optional fields.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/quests/{id}/publish:
+    post:
+      operationId: publishQuest
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag. A syntactically valid stale ETag is accepted for an already-published retry.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      responses:
+        '200':
+          description: Quest published or unchanged published representation returned for an idempotent retry.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/quests/{id}/archive:
+    post:
+      operationId: archiveQuest
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag. A syntactically valid stale ETag is accepted for an already-archived retry.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      responses:
+        '200':
+          description: Draft or published quest archived; an already-archived representation is unchanged.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/me/quests:
+    get:
+      operationId: listMyQuests
+      security: [{sessionCookie: []}]
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/QuestStatus'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Only quests created by the authenticated user.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestPage'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/me/quests/{id}:
+    get:
+      operationId: getMyQuest
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+      responses:
+        '200':
+          description: Quest owned by the authenticated user.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-id
+      description: HttpOnly Secure SameSite=Lax session cookie; local-only HTTP profile uses sidequest-local-id.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: Session-bound synchronizer token fetched from GET /api/v1/auth/csrf.
+  parameters:
+    QuestId:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    Page:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    Size:
+      name: size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+  headers:
+    ETag:
+      description: Strong ETag derived from the internal optimistic-lock version.
+      schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+  schemas:
+    CreateDraft:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: {type: string, minLength: 3, maxLength: 120, description: Unicode code points after trimming.}
+        description: {type: [string, 'null'], minLength: 10, maxLength: 3000}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null'], minimum: 1, maximum: 1000}
+    PatchDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        title: {type: string, minLength: 3, maxLength: 120}
+        description: {type: [string, 'null'], minLength: 10, maxLength: 3000}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null'], minimum: 1, maximum: 1000}
+    Quest:
+      type: object
+      additionalProperties: false
+      required: [id, creatorId, title, description, category, difficulty, rewardXp, status, createdAt, updatedAt, publishedAt, archivedAt]
+      properties:
+        id: {type: string, format: uuid}
+        creatorId: {type: string, format: uuid}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null']}
+        status: {$ref: '#/components/schemas/QuestStatus'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        publishedAt: {type: [string, 'null'], format: date-time}
+        archivedAt: {type: [string, 'null'], format: date-time}
+    QuestPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content: {type: array, items: {$ref: '#/components/schemas/Quest'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        hasNext: {type: boolean}
+        hasPrevious: {type: boolean}
+    QuestCategory:
+      type: string
+      enum: [ADVENTURE, CREATIVITY, FITNESS, LEARNING, FOOD, SOCIAL]
+    QuestDifficulty:
+      type: string
+      enum: [EASY, MEDIUM, HARD]
+    QuestStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type: {type: string, const: 'about:blank'}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code: {type: string}
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: {type: string}
+              code: {type: string}
+              message: {type: string}
+  responses:
+    Malformed:
+      description: Malformed JSON or unsupported server-managed property.
+      content: &problem
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    InvalidParameter:
+      description: Invalid pagination, category/difficulty, or overlong search query.
+      content: *problem
+    Unauthorized:
+      description: Missing or expired authenticated session.
+      content: *problem
+    CsrfFailure:
+      description: Missing or invalid CSRF token.
+      content: *problem
+    NotFound:
+      description: Quest is absent or not owned by the caller.
+      content: *problem
+    Conflict:
+      description: Quest is not in an editable draft state.
+      content: *problem
+    Stale:
+      description: If-Match is stale; current ETag is returned when available.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content: *problem
+    PreconditionRequired:
+      description: If-Match is required for draft updates.
+      content: *problem
+    Invalid:
+      description: Domain validation failed; includes field-level errors.
+      content: *problem

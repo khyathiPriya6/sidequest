@@ -89,7 +89,7 @@ When a resource supports stale-write detection, return a strong ETag with its re
 
 ## OpenAPI
 
-Keep request/response examples and status behavior in the versioned contract documentation before CRUD implementation. Do not add an OpenAPI generation dependency to the health-only backend. When the first business API is implemented, select and document an OpenAPI 3.x source-of-truth/generation approach (for example, Spring-generated documentation) and verify that the generated description matches the reviewed contract.
+Keep request/response examples and status behavior in versioned OpenAPI 3.1 documents. The project uses hand-maintained specifications as the API contract; [authentication](../api/auth.openapi.yaml) and [Quest](../api/quest.openapi.yaml) are the current source files. Integration tests verify runtime behavior against the documented status codes, shapes, and access rules. Do not add an OpenAPI generation dependency unless a later issue selects and validates that approach.
 
 ## Scope and compatibility
 

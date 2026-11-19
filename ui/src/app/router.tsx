@@ -1,6 +1,7 @@
-import { Navigate, type RouteObject } from 'react-router-dom'
+import { Navigate, useLocation, type RouteObject } from 'react-router-dom'
 import { AppShell } from './layouts/AppShell'
 import { ExploreShell } from '../pages/ExploreShell'
+import { QuestDetailPage } from '../pages/QuestDetailPage'
 import { FeaturePlaceholder } from '../pages/FeaturePlaceholder'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { AuthPage } from '../features/auth/AuthPage'

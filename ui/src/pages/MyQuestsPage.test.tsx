@@ -1,0 +1,112 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { beforeEach, expect, it, vi } from 'vitest'
+import { createAppRoutes } from '../app/router'
+import { AuthProvider } from '../features/auth/AuthContext'
+import type { Quest, QuestPage } from '../features/quests/questApi'
+
+const draft: Quest = {
+  id: 'draft-1', creatorId: 'user-1', title: 'Draft walk', description: 'A draft description',
+  category: 'ADVENTURE', difficulty: 'EASY', rewardXp: 25, status: 'DRAFT',
+  createdAt: '2025-01-02T10:00:00Z', updatedAt: '2025-01-02T10:00:00Z',
+  publishedAt: null, archivedAt: null,
+}
+const published: Quest = { ...draft, id: 'published-1', title: 'Published walk', status: 'PUBLISHED', publishedAt: '2025-01-02T10:00:00Z' }
+const archived: Quest = { ...draft, id: 'archived-1', title: 'Archived walk', status: 'ARCHIVED', archivedAt: '2025-01-03T10:00:00Z' }
+
+function page(content: Quest[], extras: Partial<QuestPage> = {}): QuestPage {
+  return { content, page: 0, size: 20, totalElements: content.length, totalPages: content.length ? 1 : 0,
+    hasNext: false, hasPrevious: false, ...extras }
+}
+
+function renderAt(path: string) {
+  const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] })
+  render(<AuthProvider><RouterProvider router={router} /></AuthProvider>)
+  return router
+}
+
+beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+  const url = new URL(String(input), 'http://localhost')
+  if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
+  if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
+    id: 'user-1', email: 'player@example.test', username: 'quest_player',
+  }))
+  if (url.pathname === '/api/v1/me/quests') {
+    const status = url.searchParams.get('status')
+    const pageNumber = Number(url.searchParams.get('page') ?? 0)
+    if (pageNumber > 0) return Promise.resolve(Response.json(page([published], { page: pageNumber, totalElements: 21, totalPages: 2, hasNext: false, hasPrevious: true })))
+    if (status === 'DRAFT') return Promise.resolve(Response.json(page([draft])))
+    if (status === 'PUBLISHED') return Promise.resolve(Response.json(page([published])))
+    if (status === 'ARCHIVED') return Promise.resolve(Response.json(page([archived])))
+    return Promise.resolve(Response.json(page([draft, published, archived], {
+      totalElements: 21,
+      totalPages: 2,
+      hasNext: true,
+    })))
+  }
+  if (url.pathname === '/api/v1/health') return Promise.resolve(Response.json({ status: 'UP', service: 'sidequest-api' }))
+  return Promise.resolve(Response.json({}, { status: 404 }))
+})))
+
+it('shows only the owner endpoint results and exposes draft-only edit navigation', async () => {
+  const router = renderAt('/my-quests')
+  expect(await screen.findByRole('heading', { name: 'Draft walk' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Published walk' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Archived walk' })).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Draft walk' })).toHaveAttribute('href', '/quests/draft-1/edit')
+  expect(screen.getByRole('link', { name: 'Published walk' })).toHaveAttribute('href', '/quests/published-1')
+  expect(screen.getByRole('link', { name: 'Archived walk' })).toHaveAttribute('href', '/quests/archived-1')
+  expect(router.state.location.pathname).toBe('/my-quests')
+})
+
+it('updates status and page through the URL and paginates owner results', async () => {
+  const user = userEvent.setup()
+  const router = renderAt('/my-quests')
+  await screen.findByRole('heading', { name: 'Draft walk' })
+  await user.click(screen.getByRole('button', { name: 'Drafts' }))
+  await waitFor(() => expect(router.state.location.search).toBe('?status=DRAFT'))
+  expect(screen.getByRole('heading', { name: 'Draft walk' })).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'Published walk' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'All quests' }))
+  await waitFor(() => expect(router.state.location.search).toBe(''))
+  await user.click(await screen.findByRole('button', { name: 'Next' }))
+  await waitFor(() => expect(router.state.location.search).toBe('?page=1'))
+  expect(screen.getByText('Page 2 of 2')).toBeVisible()
+})
+
+it('shows empty and error states and retries service failures', async () => {
+  cleanup()
+  vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+    const url = new URL(String(input), 'http://localhost')
+    if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
+    if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
+      id: 'user-1', email: 'player@example.test', username: 'quest_player',
+    }))
+    if (url.pathname === '/api/v1/me/quests') return Promise.resolve(Response.json(page([])))
+    return Promise.resolve(Response.json({ status: 'UP' }))
+  }))
+  renderAt('/my-quests')
+  expect(await screen.findByText('You haven’t created a quest yet.')).toBeVisible()
+
+  cleanup()
+  let fail = true
+  vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+    const url = new URL(String(input), 'http://localhost')
+    if (url.pathname === '/api/v1/auth/csrf') return Promise.resolve(Response.json({ csrfToken: 'test-token' }))
+    if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
+      id: 'user-1', email: 'player@example.test', username: 'quest_player',
+    }))
+    if (url.pathname === '/api/v1/me/quests') {
+      if (fail) return Promise.resolve(Response.json({ detail: 'The quest service is unavailable.' }, { status: 503 }))
+      return Promise.resolve(Response.json(page([draft])))
+    }
+    return Promise.resolve(Response.json({ status: 'UP' }))
+  }))
+  renderAt('/my-quests')
+  expect(await screen.findByRole('alert')).toHaveTextContent('quest service is unavailable')
+  fail = false
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(await screen.findByRole('heading', { name: 'Draft walk' })).toBeVisible()
+})

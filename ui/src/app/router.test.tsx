@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, expect, it, vi } from 'vitest'
@@ -26,6 +26,15 @@ it.each([
   }
 })
 
+it.each(['/quests/new', '/quests/123/edit', '/my-quests', '/my/quests', '/profile'])(
+  'protects %s behind the shared sign-in flow',
+  async path => {
+    const router = renderAt(path)
+    expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeVisible()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
+  },
+)
+
 it('uses active navigation and moves focus/title after navigation', async () => {
   const router = createMemoryRouter(createAppRoutes(), { initialEntries: ['/quests'] })
   render(<AuthProvider><RouterProvider router={router} /></AuthProvider>)
@@ -37,6 +46,22 @@ it('uses active navigation and moves focus/title after navigation', async () => 
   expect(document.title).toBe('Sign in · SideQuest')
   await userEvent.click(screen.getByRole('link', { name: 'Explore' }))
   expect(await screen.findByRole('heading', { name: 'Make today a quest.' })).toBeVisible()
+  expect(router.state.location.pathname).toBe('/quests')
+})
+
+it('preserves protected destinations and canonicalizes the legacy dashboard path', async () => {
+  const router = renderAt('/my-quests?status=DRAFT')
+  expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  expect(router.state.location.pathname).toBe('/login')
+  expect(router.state.location.state.from.pathname).toBe('/my-quests')
+  expect(router.state.location.state.from.search).toBe('?status=DRAFT')
+
+  cleanup()
+  const legacyRouter = renderAt('/my/quests?status=ARCHIVED')
+  expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  expect(legacyRouter.state.location.pathname).toBe('/login')
+  expect(legacyRouter.state.location.state.from.pathname).toBe('/my-quests')
+  expect(legacyRouter.state.location.state.from.search).toBe('?status=ARCHIVED')
 })
 
 it('preserves a protected destination through the login redirect', async () => {
