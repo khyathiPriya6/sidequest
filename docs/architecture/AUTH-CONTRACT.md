@@ -1,8 +1,8 @@
 # E03 — Authentication API and security boundaries
 
-**Status:** Core session and registration policies approved; registration design handoff remains open
+**Status:** Session and registration policies approved; runtime/security/UI integration is in open PRs #49, #50, and #51.
 **Issue:** [#39 — E03-ARCH](https://github.com/khyathiPriya6/sidequest/issues/39)
-**Scope:** Contract proposal only; no endpoints or security configuration are implemented.
+**Scope:** Policy and wire-contract authority for the implemented session endpoints and browser client.
 
 This contract assumes the owner-approved server-side session design in ADR 0002. Cookie, CSRF, expiration, and logout details are approved; update this document if the architecture changes.
 
@@ -44,7 +44,7 @@ X-CSRF-TOKEN: <csrf-token>
 }
 ```
 
-Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. Store the username canonically as `quest_maker`; uniqueness is case-insensitive. Update the registration UI design to include the approved username field before UI implementation.
+Successful registration returns `201 Created`, a session cookie, and a safe account summary. It rotates the pre-authentication session identifier and CSRF token. Store the username canonically as `quest_maker`; uniqueness is case-insensitive. The auth UI includes the owner-approved username field, validation, and help/error states.
 
 Login:
 
@@ -118,7 +118,7 @@ Never log passwords, password hashes, session cookies/IDs, CSRF tokens, authoriz
 
 ## Users schema dependency (not a migration)
 
-The implementation must define and migrate a `users` table before protected identity and Quest writes ship. The owner approved a required username, but the PRD/auth wireframe still need a design update before UI implementation. Resolve username format/canonicalization before freezing the DTO.
+The implementation must define and migrate a `users` table before protected identity and Quest writes ship. The required username format and canonicalization are approved and reflected in the auth UI. UX-002's broader wireframe checklist remains open; the owner explicitly approved using the linked Figma visual direction with the minimal username/error-state addition for issue #44.
 
 At minimum, the schema design must specify:
 
@@ -137,8 +137,8 @@ Do not run schema changes against an existing database without explicit approval
 
 - [ADR 0002](../decisions/0002-authentication-and-sessions.md): mechanism, cookie/CSRF policy, expiration and revocation need owner approval.
 - [SQ-008 Quest contract](./QUEST-CONTRACT.md): defines public Quest reads, private visibility, and principal-based ownership.
-- [Issue #37](https://github.com/khyathiPriya6/sidequest/pull/37): frontend foundation PR is still open; do not claim its UI foundation is merged into `main` or integrate auth UI before review/merge.
-- [UI/UX specification](../design/UI-UX-SPEC.md): login/register are designed around email/password. No authentication screens or UI behavior are implemented here.
+- [Issue #37](https://github.com/khyathiPriya6/sidequest/pull/37): frontend foundation PR is merged into `main`.
+- [UI/UX specification](../design/UI-UX-SPEC.md): the auth UI uses the existing dark gaming tokens and components; see the [authentication UI implementation notes](../implementation/AUTHENTICATION-UI.md).
 
 ## Approval checklist
 

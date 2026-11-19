@@ -8,7 +8,7 @@ Registration hashes exact password input with Argon2id; validation counts Unicod
 
 [auth.openapi.yaml](../api/auth.openapi.yaml) is the hand-maintained OpenAPI 3.1 runtime description. This avoids a documentation-generation runtime dependency for five endpoints. The reviewed AUTH-CONTRACT remains the policy authority; runtime integration tests verify the described routes, status codes and response shape. The specification is not hosted as a new public endpoint.
 
-Using the same-origin browser client after approval of the UI handoff:
+The same-origin browser client follows this request sequence:
 
 ```ts
 const bootstrap = await fetch('/api/v1/auth/csrf', { credentials: 'same-origin' })
@@ -33,7 +33,7 @@ Login and registration share fixed 15-minute windows: 60 attempts per source IP,
 
 ## Tests and measurement
 
-`JAVA_HOME=/private/tmp/jdk-21.0.13+9/Contents/Home bash scripts/test-postgres.sh` runs all tests against a fresh PostgreSQL cluster. The successful run included **5 unit and 12 integration tests**, including a real random-port HTTP server with a browser-style cookie jar, real PostgreSQL persistence, registration, login, session restoration, CSRF rotation, logout and invalidated-session rejection. Security/persistence regressions, safe errors, duplicate identities, throttle capacity/reset, and Unicode boundaries also passed. No frontend or Quest E2E is claimed.
+`JAVA_HOME=/private/tmp/jdk-21.0.13+9/Contents/Home bash scripts/test-postgres.sh` runs all tests against a fresh PostgreSQL cluster. The latest run on the #43 integration branch included **9 unit and 17 integration tests**, including a real random-port HTTP server with a browser-style cookie jar, PostgreSQL persistence, registration, login, session restoration, CSRF rotation, logout and invalidated-session rejection. Security/persistence regressions, safe errors, duplicate identities, throttle capacity/reset, and Unicode boundaries also passed. Frontend coverage is recorded in [the authentication UI notes](./AUTHENTICATION-UI.md).
 
 On this local Java 21.0.13 run, five synthetic Argon2id encode-plus-verify pairs averaged **129.8 ms** per pair. This includes warmup and is not a production latency benchmark or a hash-only timing; measure on deployment hardware before tuning. No credentials/hashes were printed.
 
