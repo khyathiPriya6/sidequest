@@ -47,3 +47,7 @@ Integration order: Join → history #61 → completion #62 → progression contr
 ## E04-04 history — #61
 
 Implemented owner-scoped list/detail, status+questId filters, deterministic pagination, archived summaries, ledger-derived awards and bounded projection queries. Branch `feat/e04-04-participation-history` targets Join branch `feat/e04-03-join-quest` ([#66](https://github.com/khyathiPriya6/sidequest/pull/66)); retarget to main after #66 merges. Java 21 compilation passed; 17 unit + 42 integration tests passed, zero failures/errors/skips. [Exact evidence and learning notes](../implementation/PARTICIPATION-HISTORY.md). No migration or frontend changes; self-review complete, owner review pending.
+
+## E04-05 completion and rewards — #62
+
+Implemented owner-scoped POST complete with CSRF/bodyless checks, pessimistic locking, status+ledger atomic transaction, original reward/timestamps, repeat semantics, archived eligibility, and fail-closed ledger consistency. Branch `feat/e04-05-completion-rewards` targets history branch `feat/e04-04-participation-history` (#67), itself dependent on Join #66; retarget after merges in that order. Java 21: 17 unit + 47 integration tests passed, no failures/errors/skips; exact tests and rollback/concurrency evidence in [completion notes](../implementation/PARTICIPATION-COMPLETION.md). No migration or mutable balance. Owner review pending.
