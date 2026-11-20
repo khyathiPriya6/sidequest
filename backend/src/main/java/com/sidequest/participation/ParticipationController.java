@@ -25,6 +25,13 @@ public class ParticipationController {
         return response.cacheControl(CacheControl.noStore()).body(result.body());
     }
 
+    @PostMapping("/api/v1/participations/{id}/complete")
+    ResponseEntity<ParticipationDtos.View> complete(@AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String id, HttpServletRequest request) throws IOException {
+        requireNoBody(request);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.complete(principal.userId(), uuid(id)));
+    }
+
     @GetMapping("/api/v1/me/participations")
     ResponseEntity<ParticipationDtos.HistoryPage> history(@AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) String status, @RequestParam(required = false) String questId,

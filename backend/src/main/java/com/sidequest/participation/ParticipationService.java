@@ -14,13 +14,15 @@ public class ParticipationService {
     private final QuestRepository quests;
     private final UserRepository users;
     private final XpLedgerRepository ledger;
+    private final java.time.Clock clock;
 
     ParticipationService(ParticipationRepository participations, QuestRepository quests,
-            UserRepository users, XpLedgerRepository ledger) {
+            UserRepository users, XpLedgerRepository ledger, java.time.Clock clock) {
         this.participations = participations;
         this.quests = quests;
         this.users = users;
         this.ledger = ledger;
+        this.clock = clock;
     }
 
     @Transactional
@@ -40,6 +42,27 @@ public class ParticipationService {
         var user = users.findById(userId).orElseThrow(ParticipationFailure::notFound);
         Participation participation = participations.saveAndFlush(Participation.join(user, quest));
         return new JoinResult(view(participation, quest), true);
+    }
+
+    @Transactional
+    public ParticipationDtos.View complete(UUID userId, UUID id) {
+        Participation p = participations.findByIdAndUserForUpdate(id, userId)
+                .orElseThrow(ParticipationFailure::notFound);
+        var award = ledger.findByParticipationId(id).orElse(null);
+        if (p.getStatus() == ParticipationStatus.COMPLETED) {
+            ParticipationDtos.validateAward(p.getStatus(), p.getRewardXp(), p.getCompletedAt(),
+                    award == null ? null : award.getAmount(), award == null ? null : award.getAwardedAt());
+        } else {
+            if (award != null) throw ParticipationFailure.integrity();
+            var completedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+            if (completedAt.isBefore(p.getJoinedAt())) throw ParticipationFailure.integrity();
+            p.complete(completedAt);
+            participations.flush();
+            // REQUIRED propagation: status and ledger either both commit or both roll back.
+            award = ledger.save(com.sidequest.reward.XpLedger.award(p, completedAt));
+        }
+        Quest quest = quests.findById(p.getQuestId()).orElseThrow(ParticipationFailure::integrity);
+        return ParticipationDtos.from(p, quest, award);
     }
 
     @Transactional(readOnly = true)

@@ -43,6 +43,28 @@ paths:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
         '500': {$ref: '#/components/responses/IntegrityError'}
+  /participations/{id}/complete:
+    post:
+      summary: Permanently complete an owned participation and award XP exactly once
+      description: Self-reported completion; no body or If-Match. Owner-scoped row lock and one transaction for status plus ledger. Archived Quests remain completable. Retries preserve completion and award timestamps. Cache-Control no-store. Missing/mismatched ledger is an integrity error, never repaired by another award.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/csrf'
+      responses:
+        '200':
+          description: First or repeated completion with saved snapshot award
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Participation'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: csrf_invalid (may precede authentication)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
   /me/participations:
     get:
       summary: Owner-only participation history
