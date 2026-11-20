@@ -25,6 +25,24 @@ public class ParticipationController {
         return response.cacheControl(CacheControl.noStore()).body(result.body());
     }
 
+    @GetMapping("/api/v1/me/participations")
+    ResponseEntity<ParticipationDtos.HistoryPage> history(@AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String questId,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        ParticipationStatus filter = null;
+        if (status != null) {
+            try { filter = ParticipationStatus.valueOf(status); }
+            catch (IllegalArgumentException error) { throw ParticipationFailure.badRequest("invalid_parameter"); }
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(service.history(principal.userId(), filter, questId == null ? null : uuid(questId), page, size));
+    }
+
+    @GetMapping("/api/v1/me/participations/{id}")
+    ResponseEntity<ParticipationDtos.View> detail(@AuthenticationPrincipal UserPrincipal principal, @PathVariable String id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.detail(principal.userId(), uuid(id)));
+    }
+
     static UUID uuid(String value) {
         if (!value.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
             throw ParticipationFailure.badRequest("invalid_parameter");

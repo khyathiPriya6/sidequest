@@ -42,6 +42,23 @@ public class ParticipationService {
         return new JoinResult(view(participation, quest), true);
     }
 
+    @Transactional(readOnly = true)
+    public ParticipationDtos.HistoryPage history(UUID userId, ParticipationStatus status, UUID questId, int page, int size) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+            throw ParticipationFailure.badRequest("invalid_pagination");
+        }
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("joinedAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id")));
+        return ParticipationDtos.HistoryPage.from(participations.history(userId, status, questId, pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public ParticipationDtos.View detail(UUID userId, UUID id) {
+        return participations.detail(id, userId).orElseThrow(ParticipationFailure::notFound).view();
+    }
+
     private ParticipationDtos.View view(Participation participation, Quest quest) {
         return ParticipationDtos.from(participation, quest,
                 ledger.findByParticipationId(participation.getId()).orElse(null));
