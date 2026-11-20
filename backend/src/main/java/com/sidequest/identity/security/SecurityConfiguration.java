@@ -103,7 +103,7 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/api/v1/health", "/api/v1/auth/csrf", "/api/v1/quests", "/api/v1/quests/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/me", "/api/v1/me/quests", "/api/v1/me/quests/*", "/api/v1/me/participations", "/api/v1/me/participations/*").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout", "/api/v1/quests", "/api/v1/quests/*/publish", "/api/v1/quests/*/archive", "/api/v1/quests/*/join").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout", "/api/v1/quests", "/api/v1/quests/*/publish", "/api/v1/quests/*/archive", "/api/v1/quests/*/join", "/api/v1/participations/*/complete").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/quests/*").authenticated()
                 .anyRequest().denyAll())
             .addFilterAfter(new SessionBoundaryFilter(users, sessions, clock), SecurityContextHolderFilter.class);
