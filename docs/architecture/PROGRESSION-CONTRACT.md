@@ -1,6 +1,6 @@
 # E04-06 — Progression and achievement contract (proposed for owner approval)
 
-**Status: proposed; no progression or profile runtime code is authorized by this document.** Issue #63, parent #4. Depends on E04-04 history and E04-05 completion being reviewed and merged. Owner approval is required before E04-07 (#64) implementation. Backend implementation has a separate owner-authorized exception to the Figma handoff gate; frontend implementation remains design-gated and UX-006 #35 remains open. No new product formula should be inferred until the owner approves this contract.
+**Status: owner-approved 2026-11-20 when PR #69 was merged.** Issue #63, parent #4. The merged approval covers level formulas, all nine achievement rules and stable IDs, derived achievement storage, unlock timestamps and proposed profile APIs. E04-07 (#64) may implement this contract. Backend implementation has a separate owner-authorized exception to the Figma handoff gate; frontend implementation remains design-gated and UX-006 #35 remains open.
 
 ## XP and levels
 
@@ -63,13 +63,13 @@ No additional XP is awarded for achievements. There is no client-controlled unlo
 
 ## Approval checklist
 
-- [ ] Approve 500 XP per level and exact level boundary formulas.
-- [ ] Approve all nine achievement names, IDs, category/difficulty/count rules and no bonus XP.
-- [ ] Approve deterministic unlock timestamp semantics, especially XP-award event ordering and All-Rounder.
-- [ ] Approve deriving achievements from history for MVP, with no persisted unlock table.
-- [ ] Approve proposed profile, XP history and achievement endpoints/fields and read consistency policy.
+- [x] Approve 500 XP per level and exact level boundary formulas — PR #69 merged.
+- [x] Approve all nine achievement names, IDs, category/difficulty/count rules and no bonus XP — PR #69 merged.
+- [x] Approve deterministic unlock timestamp semantics, especially XP-award event ordering and All-Rounder — PR #69 merged.
+- [x] Approve deriving achievements from history for MVP, with no persisted unlock table — PR #69 merged.
+- [x] Approve proposed profile, XP history and achievement endpoints/fields and read consistency policy — PR #69 merged.
 
-E04-07 (#64) must remain blocked until these are explicitly approved. PR #63 is documentation only and targets completion PR #68; E04 branch merge order is Join #66 → History #67 → Completion #68 → this contract PR. Each dependent PR must be retargeted after predecessor merges; no merge is automatic.
+E04-07 (#64) was blocked until PR #69 merged; its implementation now follows these approved rules. Actual merge path: Join #66 → History #67 → Completion #68 → this contract PR #69. PR #67–69 merged into their predecessor branches; only #66 is on main as of 2026-11-20. The E04-07 PR must target the latest predecessor branch and make the remaining integration path to main explicit. No merge is automatic.
 
 ## Teach-back
 
