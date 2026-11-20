@@ -1,6 +1,6 @@
 # E04 — Participation lifecycle and XP award contract
 
-Issue: #57; parent epic #4. Status: proposed technical contract for review; five product policies approved by owner on 2026-11-19. Documentation only. Read PRD, QUEST-CONTRACT, AUTH-CONTRACT, API-CONVENTIONS and AGENTS.md. Existing Quest lifecycle remains unchanged. SQ-018 owner acceptance and recorded design handoff remain prerequisites for dependent runtime/product UI work.
+Issue: #57; parent epic #4. Status: proposed technical contract for review; five product policies approved by owner on 2026-11-19. Documentation only. Read PRD, QUEST-CONTRACT, AUTH-CONTRACT, API-CONVENTIONS and AGENTS.md. Existing Quest lifecycle remains unchanged. SQ-018 manual owner acceptance is recorded in #29. On 2026-11-19 the owner explicitly approved backend implementation without Figma handoff. Frontend implementation still requires design approval; #35 remains open until its actual acceptance criteria are satisfied. This backend-only authorization is not design sign-off.
 
 ## Rules and state
 - No participation record means NOT_JOINED (not a persisted status). Join creates IN_PROGRESS; completion transitions to COMPLETED. No reverse transition, leave, deletion, repeat, deadlines or proof uploads in MVP.

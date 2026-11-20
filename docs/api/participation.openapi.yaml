@@ -1,0 +1,115 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Participation API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+security:
+  - session: []
+paths:
+  /quests/{id}/join:
+    post:
+      summary: Join a published quest, or return the existing enrollment
+      description: No request body or If-Match. Creators cannot enroll. Existing enrollments survive archive and completion. No XP is awarded. Responses use Cache-Control no-store.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/csrf'
+      responses:
+        '201':
+          description: First enrollment
+          headers:
+            Location:
+              schema: {type: string}
+              description: /api/v1/me/participations/{participationId}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Participation'}
+        '200':
+          description: Existing enrollment, with original snapshot and timestamps
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Participation'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: csrf_invalid (may precede authentication) or self_enrollment_forbidden
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: quest_not_joinable for the creator's own nonpublished quest
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-id
+      description: Local HTTP uses sidequest-local-id; obtain a session through the authentication API.
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    csrf:
+      name: X-CSRF-TOKEN
+      in: header
+      required: true
+      schema: {type: string}
+  responses:
+    BadRequest:
+      description: invalid_parameter, invalid_pagination or unexpected_body
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthenticated:
+      description: unauthenticated
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: not_found; includes inaccessible private resources
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    IntegrityError:
+      description: integrity_error; generic response with no SQL or private identifiers
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code: {type: string}
+    Participation:
+      type: object
+      required: [id, questId, status, rewardXp, joinedAt, completedAt, awardedXp, quest]
+      properties:
+        id: {type: string, format: uuid}
+        questId: {type: string, format: uuid}
+        status: {type: string, enum: [IN_PROGRESS, COMPLETED]}
+        rewardXp: {type: integer, minimum: 1, maximum: 1000}
+        joinedAt: {type: string, format: date-time}
+        completedAt: {type: [string, 'null'], format: date-time}
+        awardedXp: {type: integer, minimum: 0, maximum: 1000}
+        quest:
+          type: object
+          required: [title, description, category, difficulty, status]
+          properties:
+            title: {type: string}
+            description: {type: string}
+            category: {type: string, enum: [ADVENTURE, CREATIVITY, FITNESS, LEARNING, FOOD, SOCIAL]}
+            difficulty: {type: string, enum: [EASY, MEDIUM, HARD]}
+            status: {type: string, enum: [DRAFT, PUBLISHED, ARCHIVED]}

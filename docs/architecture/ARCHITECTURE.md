@@ -38,3 +38,7 @@ Sprint 1 health endpoint is public. Protected business endpoints are not release
 
 ## Quality attributes
 Correctness first, tests for edge cases, measured performance, reliable deployments, least-privilege access, and clear failure handling.
+
+## Backend versus frontend approval (2026-11-19)
+
+The owner explicitly authorized backend implementation without Figma/design handoff. This applies to E04 Join (#65), history (#61), completion (#62), and later approved progression APIs. Frontend implementation still requires actual design approval. UX-006 #35 stays open until its acceptance criteria are satisfied; no prototype approval is inferred. SQ-018 manual acceptance is recorded, formal closure remains open. E04-07 #64 additionally requires owner approval of the E04-06 #63 progression contract. No automatic merges or migrations of existing databases are authorized.
