@@ -16,7 +16,7 @@ Updated 2026-11-19. Java 21 retained. No existing database migrated. Current mai
 | Public and creator UI SQ-014–017 #25–28 | #52–55 feature-stack merges; now #56 candidate | Depends on API/auth UI. Details routing, saved draft publication, strict ETags, expiration and navigation recovery corrected and tested. |
 | E04-08 UI/UX handoff / UX-006 #35 | [PR #72](https://github.com/khyathiPriya6/sidequest/pull/72); [E04-08 participation handoff](../design/E04-08-PARTICIPATION-HANDOFF.md) | Figma MCP Starter-plan limit prevented canvas edits. Handoff is proposed only; owner review/design sign-off and all existing #35 acceptance criteria remain outstanding. Frontend stays gated. |
 | Pre-testing remediation #56 | fix/pretesting-stack-integration; PR pending creation | Requested findings resolved; 9 backend unit + 26 PG integration + 100 UI + 11 browser tests pass. Review open hardening findings and approve integration PR. |
-| SQ-018 #29 | Remains open; evidence in #56 | Actual full-stack journey passes. Next: owner acceptance against integration candidate, resolve/accept documented follow-ups, approve merge. Not marked complete. |
+| SQ-018 #29 | Remains open; owner manual acceptance comment and test evidence in #56 | Owner confirmed manual Auth/Quest Management acceptance; this is not formal issue closure. Owner still needs to review evidence against the issue's two-user/anonymous draft and publish/archive scenarios, validation/stale/network regressions, exact environment/results/failures/gaps and documentation/teach-back; then approve the integration merge. Issue criteria remain unchecked. |
 
 ## Acceptance and approval evidence
 
