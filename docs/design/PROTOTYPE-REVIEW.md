@@ -45,3 +45,7 @@
 
 ## Handoff to implementation
 Codex should read docs/design/ and build UI only after owner sign-off. Figma interactive prototype is a **UX demo**, not working application code, authentication, database, or XP ledger.
+
+## E04-08 participation/progression handoff (2026-11-21)
+
+Implementation-ready written states and API mappings are in [E04-08 participation handoff](E04-08-PARTICIPATION-HANDOFF.md). The Figma Starter-plan MCP limit blocked this session's canvas edits; no new Figma frames, screenshots, or approval are claimed. The handoff specifies Join/Joined/Completed/Archived states, My Quests tabs, irreversible completion confirmation/recovery, profile and XP history, loading/empty/error/session-expired behavior, responsive rules and accessibility review. Owner review and actual design sign-off are still required; #35 remains open.

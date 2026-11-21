@@ -35,3 +35,9 @@ For every issue: read specification → design → share preview → review → 
 - Interactive desktop/mobile Explorer and Creator click paths have been wired in Figma: https://www.figma.com/design/0lh9h3dvhB3ndoLB1RvUNT
 - Added seven transitional states per device class; verified Figma node navigation links.
 - [Prototype review / known gaps](../design/PROTOTYPE-REVIEW.md). Do not close UX-006 until the owner plays through and approves the prototype. Final cleanup and visual QA are outstanding due to the Figma Starter tool-call limit.
+
+## E04-08 participation/progression handoff (Nov 21, 2026)
+
+- Written screen-state, API, responsive and accessibility requirements: [E04-08 handoff](../design/E04-08-PARTICIPATION-HANDOFF.md).
+- Figma canvas extension was blocked by the Starter-plan MCP call limit; no Figma edits are claimed. Update the linked file when access is available.
+- UX-006 #35 remains open until the owner reviews the handoff and existing prototype and records the required design sign-off.
