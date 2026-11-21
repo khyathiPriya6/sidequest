@@ -1,6 +1,6 @@
 # Authentication and Quest implementation tracker
 
-Updated 2026-11-21. Java 21 retained. No existing database migrated. Current remote main: `59727c489d0e6a9e245b13689ae44997845dcbcd`. E04-04 through E04-07 integration candidate: `feat/e04-backend-main`, merging feature stack `f4a340e88bf88e6cc8ef98767175ef3d235b5267` into main. Integration PR pending creation. No owner merge has been performed.
+Updated 2026-11-21. Java 21 retained. No existing database migrated. Current remote main: `59727c489d0e6a9e245b13689ae44997845dcbcd`. E04-04 through E04-07 integration candidate: `feat/e04-backend-main`, merging feature stack `f4a340e88bf88e6cc8ef98767175ef3d235b5267` into main. [Integration PR #71](https://github.com/khyathiPriya6/sidequest/pull/71) is open and unmerged. No owner merge has been performed.
 
 ## Current implementation status
 
@@ -50,7 +50,7 @@ The verified current main is `59727c4` and contains E04-03 Join (#66). PRs #67â€
 
 Java 21.0.13.1 / Maven 3.9.16 / PostgreSQL 18.4: test compilation passed; 20 unit tests and 50 isolated PostgreSQL integration tests passed, zero failures/errors/skips. All seven changesets applied to a fresh isolated database; repeated context initialization applied zero. Exact commands: `JAVA_HOME=/private/tmp/sidequest-java21/Contents/Home PATH=/private/tmp/sidequest-java21/Contents/Home/bin:$PATH mvn -f backend/pom.xml test-compile`, same environment with `mvn -f backend/pom.xml test`, and `JAVA_HOME=/private/tmp/sidequest-java21/Contents/Home PATH=/private/tmp/sidequest-java21/Contents/Home/bin:$PATH bash backend/scripts/test-postgres.sh`. The unit run required process permission for Mockito agent attach. Existing developer database was not accessed. `git diff --check` passed. Join, history, completion, and profile implementation/rollback notes remain in the linked story documents above.
 
-SQ-018 #29: manual acceptance is recorded, but formal evidence and closure remain outstanding. UX-006 #35 remains open until its actual handoff acceptance criteria and design approval are satisfied. Backend implementation authorization does not approve frontend design. The E04 backend integration PR is not merged.
+SQ-018 #29: manual acceptance is recorded, but formal evidence and closure remain outstanding. UX-006 #35 remains open until its actual handoff acceptance criteria and design approval are satisfied. Backend implementation authorization does not approve frontend design. E04 backend integration PR #71 is not merged.
 
 ## E04-05 completion and rewards â€” #62
 
