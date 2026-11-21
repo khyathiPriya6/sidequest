@@ -1,0 +1,144 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Player Profile and Progression API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+security:
+  - session: []
+paths:
+  /me/profile:
+    get:
+      summary: Get the authenticated player's profile and ledger-derived progression
+      description: Cache-Control no-store. Reads aggregates in one repeatable-read snapshot. XP total is derived from immutable ledger rows.
+      responses:
+        '200':
+          description: Profile
+          headers:
+            Cache-Control: {schema: {type: string}, example: no-store}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+  /me/xp-transactions:
+    get:
+      summary: Get the authenticated player's XP ledger history
+      description: Newest awardedAt then ledger id first. Includes archived Quest summaries. Standard page envelope; cache-control no-store.
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: XP ledger page
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/XpPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+  /me/achievements:
+    get:
+      summary: Get all derived achievements, including locked achievements
+      description: Stable catalogue order. Progress and unlockedAt derive from immutable history. Unlocked achievements add no XP. Cache-Control no-store.
+      responses:
+        '200':
+          description: Achievement catalogue
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AchievementCatalog'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-id
+  responses:
+    BadRequest:
+      description: invalid_pagination
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthenticated:
+      description: unauthenticated
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    IntegrityError:
+      description: integrity_error; generic response, no internal SQL details
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code: {type: string}
+    Profile:
+      type: object
+      required: [username, createdAt, totalXp, level, xpIntoLevel, xpRemaining, progressPercent, joinedQuests, activeQuests, completedQuests, createdQuests, unlockedAchievementCount]
+      properties:
+        username: {type: string}
+        createdAt: {type: string, format: date-time}
+        totalXp: {type: integer, format: int64, minimum: 0}
+        level: {type: integer, format: int64, minimum: 1}
+        xpIntoLevel: {type: integer, format: int64, minimum: 0, maximum: 499}
+        xpRemaining: {type: integer, format: int64, minimum: 1, maximum: 500}
+        progressPercent: {type: number, minimum: 0, maximum: 100}
+        joinedQuests: {type: integer, format: int64}
+        activeQuests: {type: integer, format: int64}
+        completedQuests: {type: integer, format: int64}
+        createdQuests: {type: integer, format: int64}
+        unlockedAchievementCount: {type: integer, format: int64, minimum: 0, maximum: 9}
+    Achievement:
+      type: object
+      required: [id, name, description, progress, target, unlocked, unlockedAt]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        progress: {type: integer, format: int64}
+        target: {type: integer, format: int64}
+        unlocked: {type: boolean}
+        unlockedAt: {type: [string, 'null'], format: date-time}
+    AchievementCatalog:
+      type: object
+      required: [achievements]
+      properties:
+        achievements:
+          type: array
+          items: {$ref: '#/components/schemas/Achievement'}
+    XpTransaction:
+      type: object
+      required: [id, participationId, questId, amount, awardedAt, questTitle, category, difficulty, questStatus]
+      properties:
+        id: {type: string, format: uuid}
+        participationId: {type: string, format: uuid}
+        questId: {type: string, format: uuid}
+        amount: {type: integer, minimum: 1, maximum: 1000}
+        awardedAt: {type: string, format: date-time}
+        questTitle: {type: string}
+        category: {type: string}
+        difficulty: {type: string}
+        questStatus: {type: string, enum: [DRAFT, PUBLISHED, ARCHIVED]}
+    XpPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/XpTransaction'}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        hasNext: {type: boolean}
+        hasPrevious: {type: boolean}
