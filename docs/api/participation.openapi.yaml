@@ -43,6 +43,62 @@ paths:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
         '500': {$ref: '#/components/responses/IntegrityError'}
+  /participations/{id}/complete:
+    post:
+      summary: Permanently complete an owned participation and award XP exactly once
+      description: Self-reported completion; no body or If-Match. Owner-scoped row lock and one transaction for status plus ledger. Archived Quests remain completable. Retries preserve completion and award timestamps. Cache-Control no-store. Missing/mismatched ledger is an integrity error, never repaired by another award.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/csrf'
+      responses:
+        '200':
+          description: First or repeated completion with saved snapshot award
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Participation'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: csrf_invalid (may precede authentication)
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+  /me/participations:
+    get:
+      summary: Owner-only participation history
+      description: Includes archived Quests; scalar projection avoids N+1 reads. Ordered joinedAt DESC then id DESC. Cache-Control no-store. Filters combine with AND. Reject page*size above 2147483647.
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: status, in: query, schema: {type: string, enum: [IN_PROGRESS, COMPLETED]}}
+        - {name: questId, in: query, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Owner page, including empty results
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ParticipationPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
+  /me/participations/{id}:
+    get:
+      summary: Owner-only participation details, including archived Quest summary
+      description: Cache-Control no-store; missing and another user's records return the same 404.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Saved participation and current Quest summary
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Participation'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/IntegrityError'}
 components:
   securitySchemes:
     session:
@@ -83,6 +139,19 @@ components:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
   schemas:
+    ParticipationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/Participation'}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        hasNext: {type: boolean}
+        hasPrevious: {type: boolean}
     Problem:
       type: object
       required: [type, title, status, detail, instance, code]

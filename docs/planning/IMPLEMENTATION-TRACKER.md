@@ -1,6 +1,6 @@
 # Authentication and Quest implementation tracker
 
-Updated 2026-11-19. Java 21 retained. No existing database migrated. Current main: `4f6b0867db27644e0217a486e79c64d1d2debe56`. Candidate: `fix/pretesting-stack-integration`, issue [#56](https://github.com/khyathiPriya6/sidequest/issues/56). Integration commit: `e9a1d34cbafec3599e87299c544bf94711e585c2`. Integration PR: pending creation. No owner merge has been performed.
+Updated 2026-11-21. Java 21 retained. No existing database migrated. Current remote main: `59727c489d0e6a9e245b13689ae44997845dcbcd`. E04-04 through E04-07 integration candidate: `feat/e04-backend-main`, merging feature stack `f4a340e88bf88e6cc8ef98767175ef3d235b5267` into main. [Integration PR #71](https://github.com/khyathiPriya6/sidequest/pull/71) is open and unmerged. No owner merge has been performed.
 
 ## Current implementation status
 
@@ -42,4 +42,24 @@ Prerequisite correction to the earlier tracker: [SQ-018 owner manual acceptance 
 
 Owner authorization (2026-11-19): backend may proceed without Figma handoff; frontend remains design-gated, #35 stays open. E04-01/02 are on main at `92af701`; E04-03 was missing and is now implemented on `feat/e04-03-join-quest` targeting main. POST Join uses shared Quest locking with archive and idempotent enrollment. Java 21: 17 unit + 39 isolated integration tests passed, no failures/errors/skips on final run; compilation and diff check passed. Initial pool-exhaustion errors and exact commands are in [Join notes](../implementation/PARTICIPATION-JOIN.md). No existing DB migrated.
 
-Integration order: Join → history #61 → completion #62 → progression contract #63 → profile #64 after explicit contract approval. Each story gets its own PR; dependent PRs target the predecessor branch, then must be retargeted to main after predecessor merge. Owner merges only. SQ-018 manual acceptance is recorded; formal closure and frontend design sign-off remain outstanding.
+Join #65 and the persistence base are on main. History #61, completion/rewards #62, the approved progression contract #63 and profile #64 are implemented in their focused PR stack; mainline integration is tracked above. The backend-only authorization is separate from frontend design approval. SQ-018 manual acceptance is recorded; formal closure and frontend design sign-off remain outstanding.
+
+## E04-04 through E04-07 mainline integration — #61–64
+
+The verified current main is `59727c4` and contains E04-03 Join (#66). PRs #67–70 merged into predecessor feature branches, not main. Integration branch `feat/e04-backend-main` merges latest main with `feat/e04-05-completion-rewards` at `f4a340e`; there were no file conflicts. This preserves the existing Join/archive shared Quest-row locking, owner-scoped history/completion queries, atomic completion+ledger transaction, repeat idempotency, reward snapshot, archived participant access, CSRF and deny-by-default routes, bigint profile aggregation and derived achievement event ordering. The progression contract approval is recorded in PR #69 and the contract. No subsequent service or frontend feature is implemented here.
+
+Java 21.0.13.1 / Maven 3.9.16 / PostgreSQL 18.4: test compilation passed; 20 unit tests and 50 isolated PostgreSQL integration tests passed, zero failures/errors/skips. All seven changesets applied to a fresh isolated database; repeated context initialization applied zero. Exact commands: `JAVA_HOME=/private/tmp/sidequest-java21/Contents/Home PATH=/private/tmp/sidequest-java21/Contents/Home/bin:$PATH mvn -f backend/pom.xml test-compile`, same environment with `mvn -f backend/pom.xml test`, and `JAVA_HOME=/private/tmp/sidequest-java21/Contents/Home PATH=/private/tmp/sidequest-java21/Contents/Home/bin:$PATH bash backend/scripts/test-postgres.sh`. The unit run required process permission for Mockito agent attach. Existing developer database was not accessed. `git diff --check` passed. Join, history, completion, and profile implementation/rollback notes remain in the linked story documents above.
+
+SQ-018 #29: manual acceptance is recorded, but formal evidence and closure remain outstanding. UX-006 #35 remains open until its actual handoff acceptance criteria and design approval are satisfied. Backend implementation authorization does not approve frontend design. E04 backend integration PR #71 is not merged.
+
+## E04-05 completion and rewards — #62
+
+Implemented owner-scoped POST complete with CSRF/bodyless checks, pessimistic locking, status+ledger atomic transaction, original reward/timestamps, repeat semantics, archived eligibility, and fail-closed ledger consistency. PR #68 is in the E04 stack. Exact tests and rollback/concurrency evidence are in [completion notes](../implementation/PARTICIPATION-COMPLETION.md). No mutable balance or migration was introduced.
+
+## E04-06 progression and achievement proposal — #63
+
+The proposed ledger-derived XP levels and nine deterministic achievements were approved in PR #69. See [PROGRESSION-CONTRACT.md](../architecture/PROGRESSION-CONTRACT.md). Runtime/profile implementation is in #64; backend implementation authorization does not satisfy frontend design approval or UX-006 #35.
+
+## E04-07 Player Profile — #64
+
+Owner approval of E04-06 is evidenced by merged PR #69 (2026-11-20). E04-07 profile, XP history and derived achievement APIs are implemented in [PR #70](https://github.com/khyathiPriya6/sidequest/pull/70); no progression state or migrations are stored. Mainline integration of #61–64 is tracked above. Exact validation and learning notes are in [PLAYER-PROFILE.md](../implementation/PLAYER-PROFILE.md).
