@@ -14,6 +14,15 @@ public final class ParticipationDtos {
     public record View(UUID id, UUID questId, ParticipationStatus status, int rewardXp,
             Instant joinedAt, Instant completedAt, int awardedXp, QuestSummary quest) { }
 
+    public record HistoryPage(java.util.List<View> content, int page, int size, long totalElements,
+            int totalPages, boolean hasNext, boolean hasPrevious) {
+        static HistoryPage from(org.springframework.data.domain.Page<ParticipationRow> result) {
+            return new HistoryPage(result.getContent().stream().map(ParticipationRow::view).toList(),
+                    result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages(),
+                    result.hasNext(), result.hasPrevious());
+        }
+    }
+
     static View from(Participation p, Quest q, XpLedger award) {
         validateAward(p.getStatus(), p.getRewardXp(), p.getCompletedAt(),
                 award == null ? null : award.getAmount(), award == null ? null : award.getAwardedAt());

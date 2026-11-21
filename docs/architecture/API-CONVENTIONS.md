@@ -89,7 +89,7 @@ When a resource supports stale-write detection, return a strong ETag with its re
 
 ## OpenAPI
 
-Keep request/response examples and status behavior in versioned OpenAPI 3.1 documents. The project uses hand-maintained specifications as the API contract; [authentication](../api/auth.openapi.yaml) and [Quest](../api/quest.openapi.yaml) are the current source files. Integration tests verify runtime behavior against the documented status codes, shapes, and access rules. Do not add an OpenAPI generation dependency unless a later issue selects and validates that approach.
+Keep request/response examples and status behavior in versioned OpenAPI 3.1 documents. The project uses hand-maintained specifications as the API contract; [authentication](../api/auth.openapi.yaml), [Quest](../api/quest.openapi.yaml), [participation](../api/participation.openapi.yaml), and [profile/progression](../api/profile.openapi.yaml) are the source files. Integration tests verify runtime behavior against the documented status codes, shapes, and access rules. Do not add an OpenAPI generation dependency unless a later issue selects and validates that approach.
 
 ## Scope and compatibility
 
