@@ -2,6 +2,7 @@ package com.sidequest.quest;
 
 import com.sidequest.identity.UserRepository;
 import com.sidequest.moderation.ModerationState;
+import com.sidequest.moderation.AccountAbuseQuota;
 import com.sidequest.moderation.QuestModeration;
 import com.sidequest.moderation.QuestModerationRepository;
 import com.sidequest.moderation.QuestSafetyScreen;
@@ -22,20 +23,23 @@ class QuestService {
     private final QuestModerationRepository moderation;
     private final QuestSafetyScreen safety;
     private final Clock clock;
+    private final AccountAbuseQuota abuseQuota;
 
     QuestService(QuestRepository quests, UserRepository users, QuestModerationRepository moderation,
-                 QuestSafetyScreen safety, Clock clock) {
+                 QuestSafetyScreen safety, Clock clock, AccountAbuseQuota abuseQuota) {
         this.quests = quests;
         this.users = users;
         this.moderation = moderation;
         this.safety = safety;
         this.clock = clock;
+        this.abuseQuota = abuseQuota;
     }
 
     @Transactional
     VersionedQuest create(UUID creatorId, QuestDtos.CreateDraft request) {
         QuestDraftValidator.DraftValues values = QuestDraftValidator.create(request);
         var creator = users.findById(creatorId).orElseThrow(QuestApiFailure::notFound);
+        abuseQuota.requireQuestCreation(creatorId);
         Quest quest = Quest.create(creator, values.title(), values.description(),
                 values.category(), values.difficulty(), values.rewardXp());
         quest = quests.saveAndFlush(quest);
