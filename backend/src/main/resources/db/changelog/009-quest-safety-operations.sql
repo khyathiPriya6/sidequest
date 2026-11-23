@@ -17,6 +17,7 @@ CREATE TABLE quest_reports (
     CONSTRAINT quest_reports_one_per_account UNIQUE (quest_id, reporter_id)
 );
 CREATE INDEX quest_reports_quest_idx ON quest_reports (quest_id, created_at DESC);
+CREATE INDEX quest_reports_reporter_created_idx ON quest_reports (reporter_id, created_at DESC);
 CREATE TABLE moderation_audit (
     id UUID PRIMARY KEY,
     quest_id UUID NOT NULL REFERENCES quests(id) ON DELETE RESTRICT,
