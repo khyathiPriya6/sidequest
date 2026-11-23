@@ -25,7 +25,7 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: 
     id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
   }))
   if (url.pathname === '/api/v1/me/quests/draft-1/moderation') {
-    return Promise.resolve(Response.json({ state: 'UNREVIEWED', reasonCode: null }))
+    return Promise.resolve(Response.json({ state: 'UNREVIEWED', reasonCode: null, version: 0 }))
   }
   if (url.pathname === '/api/v1/me/quests/draft-1') {
     return Promise.resolve(Response.json(quest, { status: 200, headers: { ETag: '"4"' } }))
@@ -107,7 +107,7 @@ it('requires a saved draft and approval before publish; submission uses saved ET
     }
     if (path.endsWith('/submit-review')) {
       submissionEtag = new Headers(init?.headers).get('If-Match') ?? ''
-      return Response.json({ state: 'PENDING_REVIEW', reasonCode: null }, { status: 202 })
+      return Response.json({ state: 'PENDING_REVIEW', reasonCode: null, version: 1 }, { status: 202 })
     }
     if (path.endsWith('/publish')) {
       published = true
@@ -128,7 +128,7 @@ it('requires a saved draft and approval before publish; submission uses saved ET
 
 it('allows approved Quest to publish only after review state is confirmed', async () => {
   intercept((path) => {
-    if (path.endsWith('/moderation')) return Response.json({ state: 'APPROVED', reasonCode: null })
+    if (path.endsWith('/moderation')) return Response.json({ state: 'APPROVED', reasonCode: null, version: 2 })
     if (path.endsWith('/publish')) return Response.json(
       { ...quest, status: 'PUBLISHED', publishedAt: '2026-01-01T12:00:00Z' },
       { headers: { ETag: '"5"' } })
