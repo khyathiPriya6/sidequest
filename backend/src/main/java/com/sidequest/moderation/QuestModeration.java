@@ -87,6 +87,19 @@ public class QuestModeration {
         reasonCode = null;
     }
 
+    /** Internal operation only; the moderator authorization/API will be a later story. */
+    public void hide(Instant when, String code) {
+        Objects.requireNonNull(when);
+        Objects.requireNonNull(code);
+        if (state != ModerationState.APPROVED && state != ModerationState.UNDER_REVIEW) {
+            throw new IllegalStateException("Only reviewed content can be hidden");
+        }
+        if (code.isBlank() || code.length() > 40) throw new IllegalArgumentException("Invalid safety reason");
+        state = ModerationState.HIDDEN;
+        reviewedAt = when;
+        reasonCode = code;
+    }
+
     public boolean approved() { return state == ModerationState.APPROVED; }
 
     public UUID getQuestId() { return questId; }
