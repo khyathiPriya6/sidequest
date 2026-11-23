@@ -57,8 +57,8 @@ const states: readonly string[] = ['UNREVIEWED', 'PENDING_REVIEW', 'APPROVED', '
 function parseOwnerReview(value: unknown): OwnerReviewStatus {
   if (!isRecord(value) || typeof value.state !== 'string' || !states.includes(value.state)
       || !(value.reasonCode === null || typeof value.reasonCode === 'string')
-      || !Number.isSafeInteger(value.version) || (value.version as number) < 0) throw fail()
-  return { state: value.state as ModerationState, reasonCode: value.reasonCode, version: value.version as number }
+      || typeof value.version !== 'number' || !Number.isSafeInteger(value.version) || value.version < 0) throw fail()
+  return { state: value.state as ModerationState, reasonCode: value.reasonCode, version: value.version }
 }
 export function getOwnerReview(id: string, signal?: AbortSignal): Promise<OwnerReviewStatus> {
   return apiRequest<unknown>('/api/v1/me/quests/' + encodeURIComponent(id) + '/moderation', { signal })
