@@ -49,8 +49,11 @@ class ModerationOperations {
     ReportResult report(UUID reporter, UUID questId, ReportReason reason) {
         if (reason == null) throw ModerationApiFailure.invalid();
         // Public approval predicate also restricts reporting; no private Quest disclosure.
-        Quest quest = quests.findApprovedPublished(questId, QuestStatus.PUBLISHED, ModerationState.APPROVED)
-                .orElseThrow(ModerationApiFailure::notFound);
+        // Serialize against moderator hide/dismiss using the same Quest row lock.
+        Quest quest = quests.findByIdForUpdate(questId).orElseThrow(ModerationApiFailure::notFound);
+        if (quest.getStatus() != QuestStatus.PUBLISHED
+                || !reviews.findById(questId).map(QuestModeration::approved).orElse(false))
+            throw ModerationApiFailure.notFound();
         if (quest.getCreatorId().equals(reporter)) throw ModerationApiFailure.invalid();
         UUID prior = jdbc.query("""
                 SELECT id FROM quest_reports WHERE quest_id = ? AND reporter_id = ?
@@ -120,6 +123,7 @@ class ModerationOperations {
                 throw ModerationApiFailure.conflict();
             review.hide(now, normalizedReason(reasonCode));
         } else {
+            normalizedReason(reasonCode);
             if (quest.getStatus() != QuestStatus.PUBLISHED || previous != ModerationState.APPROVED
                     || openReports(questId) == 0) throw ModerationApiFailure.conflict();
         }
@@ -143,7 +147,7 @@ class ModerationOperations {
                 INSERT INTO moderation_audit (id, quest_id, moderator_id, previous_state, next_state, reason_code, decided_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), questId, moderator, previous.name(), review.getState().name(),
-                action == Action.DISMISS_REPORTS ? "REPORTS_DISMISSED" : review.getReasonCode(),
+                action == Action.DISMISS_REPORTS ? normalizedReason(reasonCode) : review.getReasonCode(),
                 Timestamp.from(now));
         Long reports = jdbc.queryForObject("SELECT count(*) FROM quest_reports WHERE quest_id = ? AND resolution = 'OPEN'", Long.class, questId);
         return new ReviewItem(questId, quest.getTitle(), quest.getDescription(), quest.getStatus().name(),
