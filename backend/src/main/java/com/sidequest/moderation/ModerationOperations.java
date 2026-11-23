@@ -25,6 +25,9 @@ class ModerationOperations {
     enum Action { APPROVE, REJECT, HIDE, DISMISS_REPORTS }
     record ReportResult(UUID id, boolean created) { }
     record AppealResult(UUID id, String status) { }
+    record LegacyQuest(UUID questId, String title, String description, Instant publishedAt) { }
+    record LegacyPage(List<LegacyQuest> content, int page, int size, long totalElements,
+                      int totalPages, boolean hasNext, boolean hasPrevious) { }
     record ReviewItem(UUID questId, String title, String description, String questStatus, ModerationState state,
                       String reasonCode, long version, long reports, String appealReason) { }
     record ReviewPage(List<ReviewItem> content, int page, int size, long totalElements,
@@ -35,14 +38,17 @@ class ModerationOperations {
     private final QuestModerationRepository reviews;
     private final Clock clock;
     private final AccountAbuseQuota abuseQuota;
+    private final QuestSafetyScreen safety;
 
     ModerationOperations(JdbcTemplate jdbc, QuestRepository quests,
-                         QuestModerationRepository reviews, Clock clock, AccountAbuseQuota abuseQuota) {
+                         QuestModerationRepository reviews, Clock clock, AccountAbuseQuota abuseQuota,
+                         QuestSafetyScreen safety) {
         this.jdbc = jdbc;
         this.quests = quests;
         this.reviews = reviews;
         this.clock = clock;
         this.abuseQuota = abuseQuota;
+        this.safety = safety;
     }
 
     @Transactional
@@ -111,13 +117,22 @@ class ModerationOperations {
         ModerationState previous = review.getState();
         Instant now = clock.instant();
         if (action == Action.APPROVE) {
-            if (quest.getStatus() != QuestStatus.DRAFT || !(previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW))
-                throw ModerationApiFailure.conflict();
+            boolean draftPending = quest.getStatus() == QuestStatus.DRAFT
+                    && (previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW);
+            boolean legacyPending = quest.getStatus() == QuestStatus.PUBLISHED
+                    && previous == ModerationState.PENDING_REVIEW && hasLegacyIntake(questId);
+            if (!draftPending && !legacyPending) throw ModerationApiFailure.conflict();
             review.approve(now);
         } else if (action == Action.REJECT) {
-            if (quest.getStatus() != QuestStatus.DRAFT || !(previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW))
+            if (quest.getStatus() == QuestStatus.PUBLISHED
+                    && previous == ModerationState.PENDING_REVIEW && hasLegacyIntake(questId)) {
+                review.rejectLegacy(now, normalizedReason(reasonCode));
+            } else if (quest.getStatus() == QuestStatus.DRAFT
+                    && (previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW)) {
+                review.reject(now, normalizedReason(reasonCode));
+            } else {
                 throw ModerationApiFailure.conflict();
-            review.reject(now, normalizedReason(reasonCode));
+            }
         } else if (action == Action.HIDE) {
             if (quest.getStatus() != QuestStatus.PUBLISHED || previous != ModerationState.APPROVED)
                 throw ModerationApiFailure.conflict();
@@ -153,6 +168,62 @@ class ModerationOperations {
         return new ReviewItem(questId, quest.getTitle(), quest.getDescription(), quest.getStatus().name(),
                 review.getState(), review.getReasonCode(), review.getVersion(), reports == null ? 0 : reports,
                 null);
+    }
+
+    @Transactional(readOnly = true)
+    LegacyPage legacyInventory(UUID moderator, int page, int size) {
+        requireModerator(moderator);
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE)
+            throw ModerationApiFailure.invalid();
+        String predicate = """
+                FROM quests q LEFT JOIN quest_moderation m ON q.id = m.quest_id
+                WHERE q.status = 'PUBLISHED' AND m.quest_id IS NULL
+                """;
+        Long count = jdbc.queryForObject("SELECT count(*) " + predicate, Long.class);
+        long total = count == null ? 0L : count;
+        List<LegacyQuest> content = jdbc.query(
+                "SELECT q.id, q.title, q.description, q.published_at " + predicate
+                + " ORDER BY q.published_at NULLS LAST, q.id LIMIT ? OFFSET ?",
+                (rs, row) -> new LegacyQuest(rs.getObject("id", UUID.class),
+                        rs.getString("title"), rs.getString("description"),
+                        rs.getTimestamp("published_at") == null
+                                ? null : rs.getTimestamp("published_at").toInstant()),
+                size, page * size);
+        int pages = (int) Math.min(Integer.MAX_VALUE, (total + size - 1) / size);
+        return new LegacyPage(content, page, size, total, pages,
+                (long) page + 1 < pages, page > 0);
+    }
+
+    @Transactional
+    ReviewItem intakeLegacy(UUID moderator, UUID questId) {
+        requireModerator(moderator);
+        Quest quest = quests.findByIdForUpdate(questId).orElseThrow(ModerationApiFailure::notFound);
+        if (quest.getStatus() != QuestStatus.PUBLISHED || reviews.existsById(questId))
+            throw ModerationApiFailure.conflict();
+        Instant now = clock.instant();
+        QuestModeration review = QuestModeration.unreviewed(quest);
+        review.submit(safety.assess(quest.getTitle(), quest.getDescription()), now);
+        reviews.saveAndFlush(review);
+        jdbc.update("""
+                INSERT INTO legacy_moderation_intake (quest_id, moderator_id, created_at)
+                VALUES (?, ?, ?)
+                """, questId, moderator, Timestamp.from(now));
+        jdbc.update("""
+                INSERT INTO moderation_audit (id, quest_id, moderator_id, previous_state, next_state,
+                                              reason_code, decided_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, UUID.randomUUID(), questId, moderator, "UNREVIEWED", "PENDING_REVIEW",
+                "LEGACY_INTAKE", Timestamp.from(now));
+        return new ReviewItem(questId, quest.getTitle(), quest.getDescription(),
+                quest.getStatus().name(), review.getState(), review.getReasonCode(),
+                review.getVersion(), 0L, null);
+    }
+
+    private boolean hasLegacyIntake(UUID questId) {
+        Boolean exists = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM legacy_moderation_intake WHERE quest_id = ?)",
+                Boolean.class, questId);
+        return Boolean.TRUE.equals(exists);
     }
 
     @Transactional
