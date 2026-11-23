@@ -23,3 +23,6 @@
   .create { width: 100%; }
   .tabs { margin-inline: calc(-1 * var(--space-4)); padding-inline: var(--space-4); }
 }
+
+.reviewLink { display: inline-flex; align-items: center; min-height: 44px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-button); border: 1px solid var(--color-border); color: var(--color-text); font-weight: 650; text-decoration: none; }
+.reviewLink:hover { text-decoration: underline; }
