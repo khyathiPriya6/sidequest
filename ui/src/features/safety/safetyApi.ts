@@ -6,11 +6,11 @@ export const reportReasons = [
   'HATE', 'EXPLOITATION', 'FRAUD_SPAM', 'PRIVACY', 'OTHER',
 ] as const
 export type ReportReason = typeof reportReasons[number]
-export type ModerationAction = 'APPROVE' | 'REJECT' | 'HIDE'
+export type ModerationAction = 'APPROVE' | 'REJECT' | 'HIDE' | 'DISMISS_REPORTS'
 export type ModerationState = 'UNREVIEWED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'UNDER_REVIEW' | 'HIDDEN'
 export type ReviewItem = {
   questId: string; title: string; description: string | null; questStatus: string; state: ModerationState
-  reasonCode: string | null; version: number; reports: number
+  reasonCode: string | null; version: number; reports: number; appealReason: string | null
 }
 export type ReviewPage = {
   content: ReviewItem[]; page: number; size: number; totalElements: number
@@ -23,6 +23,7 @@ function item(v: unknown): v is ReviewItem {
     && (v.reasonCode === null || typeof v.reasonCode === 'string')
     && typeof v.version === 'number' && Number.isSafeInteger(v.version) && v.version >= 0
     && typeof v.reports === 'number' && Number.isSafeInteger(v.reports) && v.reports >= 0
+    && (v.appealReason === null || typeof v.appealReason === 'string')
 }
 export async function listReviews(page: number, signal?: AbortSignal): Promise<ReviewPage> {
   const data: unknown = await apiRequest('/api/v1/moderation/queue?page=' + page + '&size=20', { signal })
@@ -51,12 +52,13 @@ export async function decideReview(item: ReviewItem, action: ModerationAction, r
 }
 function itemCheck(v: unknown): v is ReviewItem { return item(v) }
 
-export type OwnerReviewStatus = { state: ModerationState; reasonCode: string | null }
+export type OwnerReviewStatus = { state: ModerationState; reasonCode: string | null; version: number }
 const states: readonly string[] = ['UNREVIEWED', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'UNDER_REVIEW', 'HIDDEN']
 function parseOwnerReview(value: unknown): OwnerReviewStatus {
   if (!isRecord(value) || typeof value.state !== 'string' || !states.includes(value.state)
-      || !(value.reasonCode === null || typeof value.reasonCode === 'string')) throw fail()
-  return { state: value.state as ModerationState, reasonCode: value.reasonCode }
+      || !(value.reasonCode === null || typeof value.reasonCode === 'string')
+      || !Number.isSafeInteger(value.version) || (value.version as number) < 0) throw fail()
+  return { state: value.state as ModerationState, reasonCode: value.reasonCode, version: value.version as number }
 }
 export function getOwnerReview(id: string, signal?: AbortSignal): Promise<OwnerReviewStatus> {
   return apiRequest<unknown>('/api/v1/me/quests/' + encodeURIComponent(id) + '/moderation', { signal })
@@ -79,4 +81,15 @@ export function reviewLabel(status: OwnerReviewStatus): string {
     case 'REJECTED': return 'Rejected by a moderator'
     case 'HIDDEN': return 'Hidden for safety review'
   }
+}
+
+export async function appealQuest(id: string, status: OwnerReviewStatus, reason: string): Promise<void> {
+  if (status.state !== 'REJECTED' || reason.trim().length < 10 || reason.trim().length > 1000) throw fail()
+  const { csrfToken } = await getCsrfToken()
+  const response = await apiRequest<unknown>('/api/v1/me/quests/' + encodeURIComponent(id) + '/appeals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+    body: JSON.stringify({ reason: reason.trim(), expectedVersion: status.version }),
+  })
+  if (!isRecord(response) || typeof response.id !== 'string' || response.status !== 'PENDING') throw fail()
 }
