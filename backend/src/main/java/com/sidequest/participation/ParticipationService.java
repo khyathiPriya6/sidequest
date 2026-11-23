@@ -4,6 +4,7 @@ import com.sidequest.identity.UserRepository;
 import com.sidequest.quest.*;
 import com.sidequest.moderation.QuestModerationRepository;
 import com.sidequest.moderation.ModerationState;
+import com.sidequest.moderation.AccountAbuseQuota;
 import com.sidequest.reward.XpLedgerRepository;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -17,16 +18,18 @@ public class ParticipationService {
     private final UserRepository users;
     private final XpLedgerRepository ledger;
     private final QuestModerationRepository moderation;
+    private final AccountAbuseQuota abuseQuota;
     private final java.time.Clock clock;
 
     ParticipationService(ParticipationRepository participations, QuestRepository quests,
             UserRepository users, XpLedgerRepository ledger, QuestModerationRepository moderation,
-            java.time.Clock clock) {
+            java.time.Clock clock, AccountAbuseQuota abuseQuota) {
         this.participations = participations;
         this.quests = quests;
         this.users = users;
         this.ledger = ledger;
         this.moderation = moderation;
+        this.abuseQuota = abuseQuota;
         this.clock = clock;
     }
 
@@ -46,6 +49,7 @@ public class ParticipationService {
         if (quest.getCreatorId().equals(userId)) {
             throw new ParticipationFailure(HttpStatus.FORBIDDEN, "self_enrollment_forbidden", "You cannot join a quest you created.");
         }
+        abuseQuota.requireNewJoin(userId);
         var user = users.findById(userId).orElseThrow(ParticipationFailure::notFound);
         Participation participation = participations.saveAndFlush(Participation.join(user, quest));
         return new JoinResult(view(participation, quest), true);
