@@ -22,3 +22,8 @@
   .actions { align-items: stretch; flex-direction: column-reverse; }
   .actions button { width: 100%; }
 }
+
+.review { display: grid; gap: var(--space-3); padding: var(--space-5); }
+.review h2 { margin: 0; }
+.review p { margin: 0; }
+.review button { justify-self: start; }
