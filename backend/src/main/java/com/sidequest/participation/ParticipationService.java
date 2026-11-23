@@ -37,7 +37,7 @@ public class ParticipationService {
         if (existing.isPresent()) return new JoinResult(view(existing.get(), quest), false);
         // Existing enrolled users retain history and completion access. No new joins to unapproved Quests.
         if (quest.getStatus() != QuestStatus.PUBLISHED
-                || moderation.findById(questId).map(m -> m.getState() == ModerationState.APPROVED).orElse(false) == false) {
+                || !moderation.findById(questId).map(m -> m.getState() == ModerationState.APPROVED).orElse(false)) {
             if (quest.getCreatorId().equals(userId)) {
                 throw new ParticipationFailure(HttpStatus.CONFLICT, "quest_not_joinable", "The quest is not open for enrollment.");
             }
