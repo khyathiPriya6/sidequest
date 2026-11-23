@@ -95,7 +95,12 @@ class QuestService {
     VersionedQuest publish(UUID creatorId, UUID id, String ifMatch) {
         Quest quest = quests.findByIdAndCreatorForUpdate(id, creatorId).orElseThrow(QuestApiFailure::notFound);
         long suppliedVersion = parseIfMatch(ifMatch);
-        if (quest.getStatus() == QuestStatus.PUBLISHED) return versioned(quest);
+        if (quest.getStatus() == QuestStatus.PUBLISHED) {
+            if (!moderation.findById(id).map(QuestModeration::approved).orElse(false)) {
+                throw QuestApiFailure.reviewRequired();
+            }
+            return versioned(quest);
+        }
         if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
         requireCurrentVersion(suppliedVersion, quest.getVersion());
         var errors = QuestDraftValidator.publicationErrors(quest);
@@ -119,7 +124,7 @@ class QuestService {
         if (!errors.isEmpty()) throw QuestApiFailure.validation(errors);
         QuestModeration review = moderation.findById(id).orElseGet(() -> QuestModeration.unreviewed(quest));
         if (review.getState() != ModerationState.PENDING_REVIEW) {
-            if (review.approved() || review.getState() == ModerationState.UNDER_REVIEW) throw QuestApiFailure.conflict();
+            if (review.getState() != ModerationState.UNREVIEWED) throw QuestApiFailure.conflict();
             review.submit(safety.assess(quest.getTitle(), quest.getDescription()), clock.instant());
             moderation.saveAndFlush(review);
         }
