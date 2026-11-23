@@ -76,7 +76,8 @@ class QuestSafetyGateIT {
         assertThat(send(owner.client, "POST", "/api/v1/quests/" + id + "/publish", null,
                 owner.csrf, etag).statusCode()).isEqualTo(409);
         assertThat(send(guest, "GET", "/api/v1/quests/" + id, null, null, null).statusCode()).isEqualTo(404);
-        assertThat(body(send(guest, "GET", "/api/v1/quests", null, null, null)).get("content")).isEmpty();
+        assertThat(body(send(guest, "GET", "/api/v1/quests?q=Walk%20in%20a%20local%20park", null, null, null))
+                .get("content").size()).isZero();
         assertThat(send(participant.client, "POST", "/api/v1/quests/" + id + "/join", null,
                 participant.csrf, null).statusCode()).isEqualTo(404);
 
@@ -86,7 +87,8 @@ class QuestSafetyGateIT {
                 owner.csrf, etag);
         assertThat(published.statusCode()).isEqualTo(200);
         assertThat(send(guest, "GET", "/api/v1/quests/" + id, null, null, null).statusCode()).isEqualTo(200);
-        assertThat(body(send(guest, "GET", "/api/v1/quests", null, null, null)).get("content")).hasSize(1);
+        assertThat(body(send(guest, "GET", "/api/v1/quests?q=Walk%20in%20a%20local%20park", null, null, null))
+                .get("content").findValuesAsText("id")).contains(id.toString());
         var joined = send(participant.client, "POST", "/api/v1/quests/" + id + "/join", null,
                 participant.csrf, null);
         assertThat(joined.statusCode()).isEqualTo(201);
@@ -94,7 +96,8 @@ class QuestSafetyGateIT {
 
         hideFixture(id);
         assertThat(send(guest, "GET", "/api/v1/quests/" + id, null, null, null).statusCode()).isEqualTo(404);
-        assertThat(body(send(guest, "GET", "/api/v1/quests", null, null, null)).get("content")).isEmpty();
+        assertThat(body(send(guest, "GET", "/api/v1/quests?q=Walk%20in%20a%20local%20park", null, null, null))
+                .get("content").size()).isZero();
         Session newcomer = register();
         assertThat(send(newcomer.client, "POST", "/api/v1/quests/" + id + "/join", null,
                 newcomer.csrf, null).statusCode()).isEqualTo(404);
