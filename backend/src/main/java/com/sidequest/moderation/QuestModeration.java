@@ -87,7 +87,20 @@ public class QuestModeration {
         reasonCode = null;
     }
 
-    /** Internal operation only; the moderator authorization/API will be a later story. */
+    /** Human rejection leaves the Quest private; a creator may edit and resubmit. */
+    public void reject(Instant when, String code) {
+        Objects.requireNonNull(when);
+        Objects.requireNonNull(code);
+        if (state != ModerationState.PENDING_REVIEW) {
+            throw new IllegalStateException("Only a pending review can be rejected");
+        }
+        if (code.isBlank() || code.length() > 40) throw new IllegalArgumentException("Invalid safety reason");
+        state = ModerationState.REJECTED;
+        reviewedAt = when;
+        reasonCode = code;
+    }
+
+    /** Internal action called only by server-authorized moderation operations. */
     public void hide(Instant when, String code) {
         Objects.requireNonNull(when);
         Objects.requireNonNull(code);
