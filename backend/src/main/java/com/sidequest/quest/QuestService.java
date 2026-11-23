@@ -64,7 +64,7 @@ class QuestService {
 
     @Transactional(readOnly = true)
     VersionedQuest publicQuest(UUID readerId, UUID id) {
-        Quest quest = quests.findApprovedPublished(id)
+        Quest quest = quests.findApprovedPublished(id, QuestStatus.PUBLISHED, ModerationState.APPROVED)
                 .orElseGet(() -> readerId == null ? null
                         : quests.findByIdAndCreator_Id(id, readerId).orElse(null));
         if (quest == null) throw QuestApiFailure.notFound();
