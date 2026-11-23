@@ -49,6 +49,46 @@ public class QuestModeration {
         return record;
     }
 
+    /** Any draft revision invalidates previously submitted or approved content. */
+    public void invalidateReview() {
+        if (state == ModerationState.UNREVIEWED) return;
+        if (state != ModerationState.PENDING_REVIEW && state != ModerationState.APPROVED
+                && state != ModerationState.REJECTED && state != ModerationState.UNDER_REVIEW) {
+            throw new IllegalStateException("Cannot edit a hidden moderation record");
+        }
+        state = ModerationState.UNREVIEWED;
+        reasonCode = null;
+        submittedAt = null;
+        reviewedAt = null;
+    }
+
+    /** Deterministic screening prioritizes review; it never grants approval. */
+    public void submit(QuestSafetyScreen.Result screening, Instant now) {
+        Objects.requireNonNull(screening);
+        Objects.requireNonNull(now);
+        if (state == ModerationState.PENDING_REVIEW) return;
+        if (state != ModerationState.UNREVIEWED && state != ModerationState.REJECTED) {
+            throw new IllegalStateException("Quest cannot be submitted from this review state");
+        }
+        state = ModerationState.PENDING_REVIEW;
+        submittedAt = now;
+        reviewedAt = null;
+        reasonCode = screening.reasons().isEmpty() ? null : screening.reasons().get(0).name();
+    }
+
+    /** For a later authenticated moderator workflow, not called by a public endpoint. */
+    public void approve(Instant when) {
+        Objects.requireNonNull(when);
+        if (state != ModerationState.PENDING_REVIEW && state != ModerationState.UNDER_REVIEW) {
+            throw new IllegalStateException("Only pending reviews can be approved");
+        }
+        state = ModerationState.APPROVED;
+        reviewedAt = when;
+        reasonCode = null;
+    }
+
+    public boolean approved() { return state == ModerationState.APPROVED; }
+
     public UUID getQuestId() { return questId; }
     public ModerationState getState() { return state; }
     public String getPolicyVersion() { return policyVersion; }
