@@ -95,6 +95,9 @@ class QuestSafetyGateIT {
         var participationId = body(joined).get("id").asText();
 
         hideFixture(id);
+        // Idempotent publish must not claim success once the public Quest is hidden.
+        assertThat(send(owner.client, "POST", "/api/v1/quests/" + id + "/publish",
+                null, owner.csrf, etag(published)).statusCode()).isEqualTo(409);
         assertThat(send(guest, "GET", "/api/v1/quests/" + id, null, null, null).statusCode()).isEqualTo(404);
         assertThat(body(send(guest, "GET", "/api/v1/quests?q=Walk%20in%20a%20local%20park", null, null, null))
                 .get("content").size()).isZero();
@@ -129,6 +132,40 @@ class QuestSafetyGateIT {
         assertThat(patch.statusCode()).isEqualTo(200);
         assertThat(body(send(creator.client, "GET", "/api/v1/me/quests/" + id + "/moderation",
                 null, null, null)).get("state").asText()).isEqualTo("UNREVIEWED");
+    }
+
+    @Test
+    void aRejectedDraftNeedsRevisionBeforeResubmission() throws Exception {
+        Session creator = register();
+        var created = send(creator.client, "POST", "/api/v1/quests",
+                json.writeValueAsString(Map.of("title", "Learn watercolor painting",
+                        "description", "Paint a simple landscape at home.",
+                        "category", "CREATIVITY", "difficulty", "EASY", "rewardXp", 25)),
+                creator.csrf, null);
+        assertThat(created.statusCode()).isEqualTo(201);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        String initialTag = etag(created);
+        assertThat(send(creator.client, "POST", "/api/v1/quests/" + id + "/submit-review",
+                null, creator.csrf, initialTag).statusCode()).isEqualTo(202);
+
+        var record = reviews.findById(id).orElseThrow();
+        record.reject(Instant.now(), "OTHER");
+        reviews.saveAndFlush(record);
+
+        assertThat(send(creator.client, "POST", "/api/v1/quests/" + id + "/submit-review",
+                null, creator.csrf, initialTag).statusCode()).isEqualTo(409);
+        assertThat(send(creator.client, "POST", "/api/v1/quests/" + id + "/publish",
+                null, creator.csrf, initialTag).statusCode()).isEqualTo(409);
+
+        var updated = send(creator.client, "PATCH", "/api/v1/quests/" + id,
+                json.writeValueAsString(Map.of("description",
+                        "Paint a peaceful landscape using watercolor supplies at home.")),
+                creator.csrf, initialTag);
+        assertThat(updated.statusCode()).isEqualTo(200);
+        assertThat(body(send(creator.client, "GET", "/api/v1/me/quests/" + id + "/moderation",
+                null, null, null)).get("state").asText()).isEqualTo("UNREVIEWED");
+        assertThat(send(creator.client, "POST", "/api/v1/quests/" + id + "/submit-review",
+                null, creator.csrf, etag(updated)).statusCode()).isEqualTo(202);
     }
 
     private void approveFixture(UUID id) {
