@@ -93,3 +93,32 @@ export async function appealQuest(id: string, status: OwnerReviewStatus, reason:
   })
   if (!isRecord(response) || typeof response.id !== 'string' || response.status !== 'PENDING') throw fail()
 }
+
+export type LegacyQuest = {
+  questId: string; title: string; description: string | null; publishedAt: string | null
+}
+export type LegacyPage = {
+  content: LegacyQuest[]; page: number; size: number; totalElements: number
+  totalPages: number; hasNext: boolean; hasPrevious: boolean
+}
+export async function listLegacyQuests(page: number, signal?: AbortSignal): Promise<LegacyPage> {
+  const response: unknown = await apiRequest('/api/v1/moderation/legacy?page=' + page + '&size=20', { signal })
+  if (!isRecord(response) || !Array.isArray(response.content)
+      || !response.content.every((quest: unknown) => isRecord(quest)
+        && typeof quest.questId === 'string' && typeof quest.title === 'string'
+        && (quest.description === null || typeof quest.description === 'string')
+        && (quest.publishedAt === null || typeof quest.publishedAt === 'string'))
+      || !Number.isSafeInteger(response.page) || !Number.isSafeInteger(response.size)
+      || !Number.isSafeInteger(response.totalElements) || !Number.isSafeInteger(response.totalPages)
+      || typeof response.hasNext !== 'boolean' || typeof response.hasPrevious !== 'boolean') throw fail()
+  return response as LegacyPage
+}
+export async function intakeLegacyQuest(questId: string): Promise<ReviewItem> {
+  const { csrfToken } = await getCsrfToken()
+  const result: unknown = await apiRequest('/api/v1/moderation/legacy/' +
+    encodeURIComponent(questId) + '/intake', {
+    method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken },
+  })
+  if (!item(result)) throw fail()
+  return result
+}
