@@ -50,3 +50,33 @@ export async function decideReview(item: ReviewItem, action: ModerationAction, r
   return result
 }
 function itemCheck(v: unknown): v is ReviewItem { return item(v) }
+
+export type OwnerReviewStatus = { state: ModerationState; reasonCode: string | null }
+const states: readonly string[] = ['UNREVIEWED', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'UNDER_REVIEW', 'HIDDEN']
+function parseOwnerReview(value: unknown): OwnerReviewStatus {
+  if (!isRecord(value) || typeof value.state !== 'string' || !states.includes(value.state)
+      || !(value.reasonCode === null || typeof value.reasonCode === 'string')) throw fail()
+  return { state: value.state as ModerationState, reasonCode: value.reasonCode }
+}
+export function getOwnerReview(id: string, signal?: AbortSignal): Promise<OwnerReviewStatus> {
+  return apiRequest<unknown>('/api/v1/me/quests/' + encodeURIComponent(id) + '/moderation', { signal })
+    .then(parseOwnerReview)
+}
+export async function submitQuestReview(id: string, etag: string): Promise<OwnerReviewStatus> {
+  const { csrfToken } = await getCsrfToken()
+  const result = await apiRequest<unknown>('/api/v1/quests/' + encodeURIComponent(id) + '/submit-review', {
+    method: 'POST',
+    headers: { 'X-CSRF-TOKEN': csrfToken, 'If-Match': etag },
+  })
+  return parseOwnerReview(result)
+}
+export function reviewLabel(status: OwnerReviewStatus): string {
+  switch (status.state) {
+    case 'UNREVIEWED': return 'Not submitted for safety review'
+    case 'PENDING_REVIEW': return 'Awaiting safety review'
+    case 'UNDER_REVIEW': return 'Under safety review'
+    case 'APPROVED': return 'Approved for publishing'
+    case 'REJECTED': return 'Rejected by a moderator'
+    case 'HIDDEN': return 'Hidden for safety review'
+  }
+}
