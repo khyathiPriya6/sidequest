@@ -37,6 +37,15 @@ This branch descends from the SAFETY-02 and SAFETY-03 branches, contains the SAF
 - **Excluded:** appeals of already published hidden Quests, independent appeal panels, notifications, text/media AI screening, and repeated report submission by the same account after dismissal.
 - Legacy published Quest approval needs separate documented rollout in `docs/implementation/M3-LEGACY-ROLLOUT.md`; current staff APPROVE endpoint is draft-only.
 
+## SAFETY-08 — manually audited legacy published Quest review (Issue #92)
+
+- Append-only Liquibase 011 creates immutable staff intake provenance in `legacy_moderation_intake`. No existing published Quest is automatically approved, hidden by migration, or rewritten.
+- Staff-only `GET /api/v1/moderation/legacy` lists published Quests without moderation records. `POST /api/v1/moderation/legacy/{id}/intake` enters a single Quest into `PENDING_REVIEW`, with separate intake audit and deterministic safety triage. A Quest remains hidden from public discovery and blocked from new Join throughout intake.
+- Existing staff decision endpoint permits `APPROVE` / `REJECT` on a legacy `PUBLISHED + PENDING_REVIEW` Quest only if matching staff-intake provenance exists; `REJECT` marks moderation `HIDDEN` and preserves Quest lifecycle and historical XP. Approval grants public visibility using the existing dual `PUBLISHED + APPROVED` filter.
+- Reviewer dashboard now shows the private legacy inventory and requires explicit confirmation before intake; pending items join the existing queue.
+- Isolated PostgreSQL HTTP test source covers nonstaff denial, missing-review fail-closed visibility, single intake, approval, approval audit, new Join, and rejection. **Not executed.**
+- Release preparation is documented in `docs/implementation/M3-LEGACY-ROLLOUT.md`. Do not apply migrations to existing databases or merge until owner review, staging rehearsal, moderator staffing, E04 integration and passing regression tests.
+
 ## Limitations and release blockers
 
 1. **No automated builds or regression executed.** Tests are code only. Run frontend Vitest/TypeScript build, Java units, isolated PostgreSQL, Playwright full-stack/security tests. Fix failures before review/merge.
