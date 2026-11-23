@@ -35,7 +35,7 @@ export function ModeratorDashboard() {
     setBusyId(chosen.item.questId)
     setError('')
     try {
-      await decideReview(chosen.item, chosen.action, chosen.action === 'APPROVE' || chosen.action === 'DISMISS_REPORTS' ? '' : reason)
+      await decideReview(chosen.item, chosen.action, chosen.action === 'APPROVE' ? '' : reason)
       setConfirm(null)
       setRevision(n => n + 1) // refresh authoritative server state, never replay
     } catch (e) {
@@ -82,11 +82,12 @@ export function ModeratorDashboard() {
     {confirm && <Card role="group" aria-label="Confirm moderation decision" style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2>Confirm {confirm.action.toLowerCase()}?</h2>
       <p>{confirm.item.title}</p>
-      {confirm.action !== 'APPROVE' && confirm.action !== 'DISMISS_REPORTS' && <>
+      {confirm.action !== 'APPROVE' && <>
         <label htmlFor="moderation-reason">Reason code</label>
         <select id="moderation-reason" value={reason} onChange={e => setReason(e.target.value)}>
           {['DANGEROUS_ACT', 'SELF_HARM', 'ILLEGAL', 'VIOLENCE_HARASSMENT',
-            'HATE', 'EXPLOITATION', 'FRAUD_SPAM', 'PRIVACY', 'OTHER'].map(code =>
+            'HATE', 'EXPLOITATION', 'FRAUD_SPAM', 'PRIVACY', 'OTHER',
+            'NO_POLICY_VIOLATION', 'DUPLICATE_OR_ABUSIVE_REPORTS'].map(code =>
             <option key={code} value={code}>{code.replaceAll('_', ' ')}</option>)}
         </select>
       </>}
