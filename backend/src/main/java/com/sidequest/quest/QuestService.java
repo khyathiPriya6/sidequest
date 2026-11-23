@@ -81,6 +81,9 @@ class QuestService {
         if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
         requireCurrentVersion(ifMatch, quest.getVersion());
         QuestDraftValidator.DraftValues values = QuestDraftValidator.patch(quest, request);
+        if (moderation.findById(id).map(m -> m.getState() == ModerationState.UNDER_REVIEW).orElse(false)) {
+            throw QuestApiFailure.conflict();
+        }
         quest.updateDraft(values.title(), values.description(), values.category(),
                 values.difficulty(), values.rewardXp());
         moderation.findById(quest.getId()).ifPresent(QuestModeration::invalidateReview);
@@ -120,18 +123,18 @@ class QuestService {
             review.submit(safety.assess(quest.getTitle(), quest.getDescription()), clock.instant());
             moderation.saveAndFlush(review);
         }
-        return new ModerationSubmission(review.getState().name(), review.getReasonCode());
+        return new ModerationSubmission(review.getState().name(), review.getReasonCode(), review.getVersion());
     }
 
     @Transactional(readOnly = true)
     ModerationSubmission reviewStatus(UUID creatorId, UUID id) {
         ownedQuest(creatorId, id); // Conceal non-owned resources.
         return moderation.findById(id)
-                .map(m -> new ModerationSubmission(m.getState().name(), m.getReasonCode()))
-                .orElseGet(() -> new ModerationSubmission(ModerationState.UNREVIEWED.name(), null));
+                .map(m -> new ModerationSubmission(m.getState().name(), m.getReasonCode(), m.getVersion()))
+                .orElseGet(() -> new ModerationSubmission(ModerationState.UNREVIEWED.name(), null, 0));
     }
 
-    record ModerationSubmission(String state, String reasonCode) { }
+    record ModerationSubmission(String state, String reasonCode, long version) { }
 
     @Transactional
     VersionedQuest archive(UUID creatorId, UUID id, String ifMatch) {
