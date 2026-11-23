@@ -121,6 +121,97 @@ class ModerationOperationsIT {
         assertThat(call(other, "GET", "/api/v1/moderation/queue", null, null).statusCode()).isEqualTo(403);
     }
 
+    @Test
+    void creatorCanAppealRejectionButOnlyStaffMayResolveIt() throws Exception {
+        Session creator = register();
+        Session moderator = register();
+        Session outsider = register();
+        jdbc.update("INSERT INTO moderation_staff (user_id) VALUES (?)", moderator.id());
+        var created = call(creator, "POST", "/api/v1/quests", json.writeValueAsString(Map.of(
+                "title", "Learn to draw birds",
+                "description", "Sketch birds from a quiet public viewpoint.",
+                "category", "CREATIVITY", "difficulty", "EASY", "rewardXp", 25)), null);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        String etag = created.headers().firstValue("etag").orElseThrow();
+        assertThat(call(creator, "POST", "/api/v1/quests/" + id + "/submit-review", null, etag)
+                .statusCode()).isEqualTo(202);
+        String decisionUrl = "/api/v1/moderation/quests/" + id + "/decisions";
+        var ownerStatus = body(call(creator, "GET", "/api/v1/me/quests/" + id + "/moderation", null, null));
+        long reviewVersion = ownerStatus.get("version").asLong();
+        var rejected = call(moderator, "POST", decisionUrl,
+                json.writeValueAsString(Map.of("action", "REJECT", "reasonCode", "OTHER",
+                        "expectedVersion", reviewVersion)), null);
+        assertThat(rejected.statusCode()).isEqualTo(200);
+        long rejectionVersion = body(rejected).get("version").asLong();
+        String appealUrl = "/api/v1/me/quests/" + id + "/appeals";
+        var request = json.writeValueAsString(Map.of(
+                "reason", "This is a harmless art exercise, please reconsider.",
+                "expectedVersion", rejectionVersion));
+        assertThat(call(outsider, "POST", appealUrl, request, null).statusCode()).isEqualTo(404);
+        assertThat(call(creator, "POST", appealUrl, request, null).statusCode()).isEqualTo(200);
+        assertThat(call(creator, "POST", appealUrl, request, null).statusCode()).isEqualTo(409);
+        assertThat(body(call(creator, "GET", "/api/v1/me/quests/" + id + "/moderation", null, null))
+                .get("state").asText()).isEqualTo("UNDER_REVIEW");
+        assertThat(call(creator, "PATCH", "/api/v1/quests/" + id,
+                json.writeValueAsString(Map.of("title", "Edited mid-appeal")), etag).statusCode()).isEqualTo(409);
+
+        var queue = body(call(moderator, "GET", "/api/v1/moderation/queue", null, null)).get("content");
+        JsonNode pendingAppeal = null;
+        for (JsonNode item : queue) if (id.toString().equals(item.get("questId").asText())) pendingAppeal = item;
+        assertThat(pendingAppeal).isNotNull();
+        assertThat(pendingAppeal.get("appealReason").asText()).contains("harmless art");
+        var approved = call(moderator, "POST", decisionUrl,
+                json.writeValueAsString(Map.of("action", "APPROVE", "reasonCode", "",
+                        "expectedVersion", pendingAppeal.get("version").asLong())), null);
+        assertThat(approved.statusCode()).isEqualTo(200);
+        assertThat(body(approved).get("state").asText()).isEqualTo("APPROVED");
+        assertThat(jdbc.queryForObject(
+                "SELECT status FROM moderation_appeals WHERE quest_id = ?", String.class, id))
+                .isEqualTo("APPROVED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM moderation_audit WHERE quest_id = ?", Long.class, id))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void moderatorCanDismissFalseReportsWithoutHidingAQuest() throws Exception {
+        Session creator = register();
+        Session moderator = register();
+        Session reporter = register();
+        jdbc.update("INSERT INTO moderation_staff (user_id) VALUES (?)", moderator.id());
+        var created = call(creator, "POST", "/api/v1/quests", json.writeValueAsString(Map.of(
+                "title", "Practice drawing flowers",
+                "description", "Draw a simple flower using pencil and paper.",
+                "category", "CREATIVITY", "difficulty", "EASY", "rewardXp", 25)), null);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        String etag = created.headers().firstValue("etag").orElseThrow();
+        assertThat(call(creator, "POST", "/api/v1/quests/" + id + "/submit-review", null, etag)
+                .statusCode()).isEqualTo(202);
+        var review = body(call(creator, "GET", "/api/v1/me/quests/" + id + "/moderation", null, null));
+        var approved = call(moderator, "POST", "/api/v1/moderation/quests/" + id + "/decisions",
+                json.writeValueAsString(Map.of("action", "APPROVE", "reasonCode", "",
+                        "expectedVersion", review.get("version").asLong())), null);
+        assertThat(approved.statusCode()).isEqualTo(200);
+        assertThat(call(creator, "POST", "/api/v1/quests/" + id + "/publish", null, etag)
+                .statusCode()).isEqualTo(200);
+        assertThat(call(reporter, "POST", "/api/v1/quests/" + id + "/reports",
+                json.writeValueAsString(Map.of("reason", "OTHER")), null).statusCode()).isEqualTo(201);
+        var dismissed = call(moderator, "POST", "/api/v1/moderation/quests/" + id + "/decisions",
+                json.writeValueAsString(Map.of("action", "DISMISS_REPORTS",
+                        "reasonCode", "NO_POLICY_VIOLATION",
+                        "expectedVersion", body(approved).get("version").asLong())), null);
+        assertThat(dismissed.statusCode()).isEqualTo(200);
+        assertThat(body(dismissed).get("state").asText()).isEqualTo("APPROVED");
+        assertThat(body(dismissed).get("reports").asInt()).isZero();
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject(
+                "SELECT resolution FROM quest_reports WHERE quest_id = ?", String.class, id))
+                .isEqualTo("DISMISSED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM moderation_audit WHERE quest_id = ? AND reason_code = 'NO_POLICY_VIOLATION'",
+                Long.class, id)).isEqualTo(1);
+    }
+
     private Session register() throws Exception {
         HttpClient client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
         String username = "m" + UUID.randomUUID().toString().replace("-", "").substring(0, 19);
