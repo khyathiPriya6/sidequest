@@ -249,3 +249,29 @@ it('prevents duplicate saves and edits while a save is pending', async () => {
   await waitFor(() => expect(title).toBeEnabled())
   expect(title).toHaveValue('Saved once')
 })
+
+it('lets a rejected creator appeal once using the server review version', async () => {
+  let appealed = false
+  let requestBody: { expectedVersion?: number; reason?: string } = {}
+  intercept((path, init) => {
+    if (path.endsWith('/moderation')) {
+      return Response.json(appealed
+        ? { state: 'UNDER_REVIEW', reasonCode: 'OTHER', version: 8 }
+        : { state: 'REJECTED', reasonCode: 'OTHER', version: 7 })
+    }
+    if (path.endsWith('/appeals') && init?.method === 'POST') {
+      requestBody = JSON.parse(String(init.body))
+      appealed = true
+      return Response.json({ id: '00000000-0000-4000-8000-000000000099', status: 'PENDING' })
+    }
+  })
+  renderAt('/quests/draft-1/edit')
+  expect(await screen.findByText('Rejected by a moderator')).toBeVisible()
+  const textarea = screen.getByRole('textbox', { name: 'Why should this rejection be reconsidered?' })
+  fireEvent.change(textarea, { target: { value: 'This is a safe and educational drawing exercise.' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Request appeal' }))
+  expect(await screen.findByText('Under safety review')).toBeVisible()
+  expect(requestBody).toEqual({ expectedVersion: 7, reason: 'This is a safe and educational drawing exercise.' })
+  expect(screen.queryByRole('button', { name: 'Request appeal' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+})
