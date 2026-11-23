@@ -55,7 +55,7 @@ class ModerationOperations {
                 SELECT id FROM quest_reports WHERE quest_id = ? AND reporter_id = ?
                 """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null, questId, reporter);
         if (prior != null) return new ReportResult(prior, false);
-        abuseQuota.requireNewReport(reporter);
+        abuseQuota.requireNewReport(reporter, questId);
         UUID reportId = UUID.randomUUID();
         int inserted = jdbc.update("""
                 INSERT INTO quest_reports (id, quest_id, reporter_id, reason, created_at)
