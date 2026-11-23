@@ -9,7 +9,7 @@ export type ReportReason = typeof reportReasons[number]
 export type ModerationAction = 'APPROVE' | 'REJECT' | 'HIDE'
 export type ModerationState = 'UNREVIEWED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'UNDER_REVIEW' | 'HIDDEN'
 export type ReviewItem = {
-  questId: string; title: string; questStatus: string; state: ModerationState
+  questId: string; title: string; description: string | null; questStatus: string; state: ModerationState
   reasonCode: string | null; version: number; reports: number
 }
 export type ReviewPage = {
@@ -19,7 +19,7 @@ export type ReviewPage = {
 const fail = () => new ApiError(502, 'invalid_response', 'Review data could not be verified. Reload before taking action.')
 function item(v: unknown): v is ReviewItem {
   return isRecord(v) && typeof v.questId === 'string' && typeof v.title === 'string'
-    && typeof v.questStatus === 'string' && typeof v.state === 'string'
+    && (v.description === null || typeof v.description === 'string') && typeof v.questStatus === 'string' && typeof v.state === 'string'
     && (v.reasonCode === null || typeof v.reasonCode === 'string')
     && typeof v.version === 'number' && Number.isSafeInteger(v.version) && v.version >= 0
     && typeof v.reports === 'number' && Number.isSafeInteger(v.reports) && v.reports >= 0
