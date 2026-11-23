@@ -1,0 +1,59 @@
+package com.sidequest.moderation;
+
+import com.sidequest.quest.Quest;
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+
+/** Internal review record. Never directly return this JPA entity from an API. */
+@Entity
+@Table(name = "quest_moderation")
+public class QuestModeration {
+    @Id
+    @Column(name = "quest_id", nullable = false)
+    private UUID questId;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId
+    @JoinColumn(name = "quest_id", nullable = false, updatable = false)
+    private Quest quest;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 24)
+    private ModerationState state;
+
+    @Column(name = "policy_version", nullable = false, length = 32)
+    private String policyVersion;
+
+    @Column(name = "reason_code", length = 40)
+    private String reasonCode;
+
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Version
+    private long version;
+
+    protected QuestModeration() { }
+
+    public static QuestModeration unreviewed(Quest quest) {
+        QuestModeration record = new QuestModeration();
+        record.quest = Objects.requireNonNull(quest);
+        record.questId = quest.getId();
+        record.state = ModerationState.UNREVIEWED;
+        record.policyVersion = "m3-v1";
+        return record;
+    }
+
+    public UUID getQuestId() { return questId; }
+    public ModerationState getState() { return state; }
+    public String getPolicyVersion() { return policyVersion; }
+    public String getReasonCode() { return reasonCode; }
+    public Instant getSubmittedAt() { return submittedAt; }
+    public Instant getReviewedAt() { return reviewedAt; }
+    public long getVersion() { return version; }
+}
