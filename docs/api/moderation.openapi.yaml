@@ -101,6 +101,35 @@ paths:
         '200': {description: Previously submitted report receipt}
         '404': {description: Quest unavailable or not eligible for reporting}
         '429': {description: Account quota exceeded}
+  /api/v1/moderation/legacy:
+    get:
+      summary: Staff-only inventory of pre-moderation published Quests
+      description: >
+        Lists PUBLISHED Quests without any review row. This is private to authorized
+        moderators and does not affect public visibility or existing XP history.
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200': {description: Paginated legacy inventory with title/description/publishedAt}
+        '401': {description: Authentication required}
+        '403': {description: Provisioned moderator role required}
+  /api/v1/moderation/legacy/{id}/intake:
+    post:
+      summary: Intake one previously published Quest for a human safety review
+      description: >
+        Requires PUBLISHED status and no existing moderation row; creates a
+        pending review, immutable staff intake provenance and audit entry
+        in one transaction. Never grants approval or public visibility.
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{ $ref: '#/components/parameters/QuestId' }]
+      responses:
+        '200': {description: Pending review, still hidden from public discovery}
+        '401': {description: Authentication required}
+        '403': {description: Moderator role or CSRF check failed}
+        '404': {description: Quest does not exist}
+        '409': {description: Quest not eligible or already ingested for review}
   /api/v1/moderation/queue:
     get:
       summary: Private staff review queue
@@ -133,7 +162,7 @@ paths:
                 reasonCode: {type: string, maxLength: 40}
       responses:
         '200':
-          description: State committed with audit; DISMISS_REPORTS retains APPROVED and resolves outstanding reports
+          description: State committed with audit; DISMISS_REPORTS retains APPROVED and resolves outstanding reports. A legacy PUBLISHED Quest can be APPROVED or REJECTED only with staff-intake provenance; rejection hides the Quest without modifying XP
         '403': {description: Not provisioned as moderator}
         '409': {description: Invalid or stale review state}
 components:
