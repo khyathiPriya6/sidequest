@@ -169,7 +169,10 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
       setValues(next)
       setInitialValues(next)
       setSaved(true)
-      if (mode === 'edit') setReview({ state: 'UNREVIEWED', reasonCode: null })
+      if (mode === 'edit') {
+        setReview({ state: 'UNREVIEWED', reasonCode: null })
+        setReviewError('')
+      }
       setFieldErrors({})
       if (mode === 'create') {
         allowNavigation.current = true
