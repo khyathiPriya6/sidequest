@@ -25,7 +25,7 @@ class ModerationOperations {
     }
     enum Action { APPROVE, REJECT, HIDE }
     record ReportResult(UUID id, boolean created) { }
-    record ReviewItem(UUID questId, String title, String questStatus, ModerationState state,
+    record ReviewItem(UUID questId, String title, String description, String questStatus, ModerationState state,
                       String reasonCode, long version, long reports) { }
     record ReviewPage(List<ReviewItem> content, int page, int size, long totalElements,
                       int totalPages, boolean hasNext, boolean hasPrevious) { }
@@ -76,17 +76,17 @@ class ModerationOperations {
         Long count = jdbc.queryForObject("SELECT count(*) " + predicate, Long.class);
         long total = count == null ? 0 : count;
         List<ReviewItem> content = jdbc.query("""
-                SELECT m.quest_id, q.title, q.status, m.state, m.reason_code, m.version,
+                SELECT m.quest_id, q.title, q.description, q.status, m.state, m.reason_code, m.version,
                        (SELECT count(*) FROM quest_reports r WHERE r.quest_id = m.quest_id) AS report_count
                 """ + predicate + " ORDER BY m.submitted_at NULLS LAST, m.quest_id LIMIT ? OFFSET ?",
                 (rs, row) -> new ReviewItem(
-                        rs.getObject("quest_id", UUID.class), rs.getString("title"),
+                        rs.getObject("quest_id", UUID.class), rs.getString("title"), rs.getString("description"),
                         rs.getString("status"), ModerationState.valueOf(rs.getString("state")),
                         rs.getString("reason_code"), rs.getLong("version"), rs.getLong("report_count")),
                 size, page * size);
         int totalPages = (int) Math.min(Integer.MAX_VALUE, (total + size - 1) / size);
         return new ReviewPage(content, page, size, total, totalPages,
-                (long) (page + 1) < totalPages, page > 0);
+                ((long) page + 1) < totalPages, page > 0);
     }
 
     @Transactional
@@ -119,7 +119,7 @@ class ModerationOperations {
                 """, UUID.randomUUID(), questId, moderator, previous.name(), review.getState().name(),
                 review.getReasonCode(), Timestamp.from(now));
         Long reports = jdbc.queryForObject("SELECT count(*) FROM quest_reports WHERE quest_id = ?", Long.class, questId);
-        return new ReviewItem(questId, quest.getTitle(), quest.getStatus().name(),
+        return new ReviewItem(questId, quest.getTitle(), quest.getDescription(), quest.getStatus().name(),
                 review.getState(), review.getReasonCode(), review.getVersion(), reports == null ? 0 : reports);
     }
 
