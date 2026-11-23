@@ -2,6 +2,8 @@ package com.sidequest.participation;
 
 import com.sidequest.identity.UserRepository;
 import com.sidequest.quest.*;
+import com.sidequest.moderation.QuestModerationRepository;
+import com.sidequest.moderation.ModerationState;
 import com.sidequest.reward.XpLedgerRepository;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -14,14 +16,17 @@ public class ParticipationService {
     private final QuestRepository quests;
     private final UserRepository users;
     private final XpLedgerRepository ledger;
+    private final QuestModerationRepository moderation;
     private final java.time.Clock clock;
 
     ParticipationService(ParticipationRepository participations, QuestRepository quests,
-            UserRepository users, XpLedgerRepository ledger, java.time.Clock clock) {
+            UserRepository users, XpLedgerRepository ledger, QuestModerationRepository moderation,
+            java.time.Clock clock) {
         this.participations = participations;
         this.quests = quests;
         this.users = users;
         this.ledger = ledger;
+        this.moderation = moderation;
         this.clock = clock;
     }
 
@@ -30,7 +35,9 @@ public class ParticipationService {
         Quest quest = quests.findByIdForUpdate(questId).orElseThrow(ParticipationFailure::notFound);
         var existing = participations.findByUser_IdAndQuest_Id(userId, questId);
         if (existing.isPresent()) return new JoinResult(view(existing.get(), quest), false);
-        if (quest.getStatus() != QuestStatus.PUBLISHED) {
+        // Existing enrolled users retain history and completion access. No new joins to unapproved Quests.
+        if (quest.getStatus() != QuestStatus.PUBLISHED
+                || moderation.findById(questId).map(m -> m.getState() == ModerationState.APPROVED).orElse(false) == false) {
             if (quest.getCreatorId().equals(userId)) {
                 throw new ParticipationFailure(HttpStatus.CONFLICT, "quest_not_joinable", "The quest is not open for enrollment.");
             }
