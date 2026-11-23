@@ -26,11 +26,12 @@ public interface QuestRepository extends JpaRepository<Quest, UUID>, QuestReposi
     Optional<Quest> findByIdAndStatus(UUID id, QuestStatus status);
 
     @Query("""
-        select q from Quest q where q.id = :id and q.status = com.sidequest.quest.QuestStatus.PUBLISHED
+        select q from Quest q where q.id = :id and q.status = :status
         and exists (select m.questId from QuestModeration m
-                    where m.questId = q.id and m.state = com.sidequest.moderation.ModerationState.APPROVED)
+                    where m.questId = q.id and m.state = :approved)
         """)
-    Optional<Quest> findApprovedPublished(@Param("id") UUID id);
+    Optional<Quest> findApprovedPublished(@Param("id") UUID id, @Param("status") QuestStatus status,
+                                         @Param("approved") com.sidequest.moderation.ModerationState approved);
 
     Page<Quest> findAllByCreator_Id(UUID creatorId, Pageable pageable);
 
