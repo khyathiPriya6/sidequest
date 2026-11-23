@@ -55,6 +55,7 @@ export function ModeratorDashboard() {
     {!loading && !restricted && data?.content.length === 0 && <Card>No quests need review.</Card>}
     {!loading && !restricted && data?.content.map(item => <Card key={item.questId} style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2>{item.title}</h2>
+      <p style={{ whiteSpace: 'pre-wrap' }}>{item.description}</p>
       <p>Status: {item.state.replaceAll('_', ' ')} · Quest: {item.questStatus}</p>
       <p>Reports: {item.reports} · Review version: {item.version}</p>
       {item.reasonCode && <p>Screening flag: {item.reasonCode.replaceAll('_', ' ')}</p>}
