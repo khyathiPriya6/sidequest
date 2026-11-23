@@ -22,8 +22,9 @@ class ModerationOperations {
         DANGEROUS_ACT, SELF_HARM, ILLEGAL, VIOLENCE_HARASSMENT, HATE,
         EXPLOITATION, FRAUD_SPAM, PRIVACY, OTHER
     }
-    enum Action { APPROVE, REJECT, HIDE }
+    enum Action { APPROVE, REJECT, HIDE, DISMISS_REPORTS }
     record ReportResult(UUID id, boolean created) { }
+    record AppealResult(UUID id, String status) { }
     record ReviewItem(UUID questId, String title, String description, String questStatus, ModerationState state,
                       String reasonCode, long version, long reports) { }
     record ReviewPage(List<ReviewItem> content, int page, int size, long totalElements,
@@ -77,13 +78,13 @@ class ModerationOperations {
                 FROM quest_moderation m JOIN quests q ON q.id = m.quest_id
                 WHERE m.state IN ('PENDING_REVIEW','UNDER_REVIEW')
                 OR (m.state = 'APPROVED' AND EXISTS
-                    (SELECT 1 FROM quest_reports report WHERE report.quest_id = m.quest_id))
+                    (SELECT 1 FROM quest_reports report WHERE report.quest_id = m.quest_id AND report.resolution = 'OPEN'))
                 """;
         Long count = jdbc.queryForObject("SELECT count(*) " + predicate, Long.class);
         long total = count == null ? 0 : count;
         List<ReviewItem> content = jdbc.query("""
                 SELECT m.quest_id, q.title, q.description, q.status, m.state, m.reason_code, m.version,
-                       (SELECT count(*) FROM quest_reports r WHERE r.quest_id = m.quest_id) AS report_count
+                       (SELECT count(*) FROM quest_reports r WHERE r.quest_id = m.quest_id AND r.resolution = 'OPEN') AS report_count
                 """ + predicate + " ORDER BY m.submitted_at NULLS LAST, m.quest_id LIMIT ? OFFSET ?",
                 (rs, row) -> new ReviewItem(
                         rs.getObject("quest_id", UUID.class), rs.getString("title"), rs.getString("description"),
@@ -106,27 +107,75 @@ class ModerationOperations {
         ModerationState previous = review.getState();
         Instant now = clock.instant();
         if (action == Action.APPROVE) {
-            if (quest.getStatus() != QuestStatus.DRAFT || previous != ModerationState.PENDING_REVIEW)
+            if (quest.getStatus() != QuestStatus.DRAFT || !(previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW))
                 throw ModerationApiFailure.conflict();
             review.approve(now);
         } else if (action == Action.REJECT) {
-            if (quest.getStatus() != QuestStatus.DRAFT || previous != ModerationState.PENDING_REVIEW)
+            if (quest.getStatus() != QuestStatus.DRAFT || !(previous == ModerationState.PENDING_REVIEW || previous == ModerationState.UNDER_REVIEW))
                 throw ModerationApiFailure.conflict();
             review.reject(now, normalizedReason(reasonCode));
-        } else {
+        } else if (action == Action.HIDE) {
             if (quest.getStatus() != QuestStatus.PUBLISHED || previous != ModerationState.APPROVED)
                 throw ModerationApiFailure.conflict();
             review.hide(now, normalizedReason(reasonCode));
+        } else {
+            if (quest.getStatus() != QuestStatus.PUBLISHED || previous != ModerationState.APPROVED
+                    || openReports(questId) == 0) throw ModerationApiFailure.conflict();
         }
         reviews.saveAndFlush(review);
+        if (previous == ModerationState.UNDER_REVIEW) {
+            int resolved = jdbc.update("""
+                    UPDATE moderation_appeals SET status = ?, resolved_at = ?, resolved_by = ?
+                    WHERE quest_id = ? AND status = 'PENDING'
+                    """, action == Action.APPROVE ? "APPROVED" : "REJECTED",
+                    Timestamp.from(now), moderator, questId);
+            if (resolved != 1) throw ModerationApiFailure.conflict();
+        }
+        if (action == Action.HIDE || action == Action.DISMISS_REPORTS) {
+            jdbc.update("""
+                    UPDATE quest_reports SET resolution = ?, resolved_at = ?, resolved_by = ?
+                    WHERE quest_id = ? AND resolution = 'OPEN'
+                    """, action == Action.HIDE ? "ACTIONED" : "DISMISSED",
+                    Timestamp.from(now), moderator, questId);
+        }
         jdbc.update("""
                 INSERT INTO moderation_audit (id, quest_id, moderator_id, previous_state, next_state, reason_code, decided_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), questId, moderator, previous.name(), review.getState().name(),
-                review.getReasonCode(), Timestamp.from(now));
-        Long reports = jdbc.queryForObject("SELECT count(*) FROM quest_reports WHERE quest_id = ?", Long.class, questId);
+                action == Action.DISMISS_REPORTS ? "REPORTS_DISMISSED" : review.getReasonCode(),
+                Timestamp.from(now));
+        Long reports = jdbc.queryForObject("SELECT count(*) FROM quest_reports WHERE quest_id = ? AND resolution = 'OPEN'", Long.class, questId);
         return new ReviewItem(questId, quest.getTitle(), quest.getDescription(), quest.getStatus().name(),
                 review.getState(), review.getReasonCode(), review.getVersion(), reports == null ? 0 : reports);
+    }
+
+    @Transactional
+    AppealResult appeal(UUID creatorId, UUID questId, long expectedVersion, String reason) {
+        String explanation = reason == null ? "" : reason.strip();
+        if (expectedVersion < 0 || explanation.length() < 10 || explanation.length() > 1000)
+            throw ModerationApiFailure.invalid();
+        Quest quest = quests.findByIdAndCreatorForUpdate(questId, creatorId)
+                .orElseThrow(ModerationApiFailure::notFound);
+        if (quest.getStatus() != QuestStatus.DRAFT) throw ModerationApiFailure.conflict();
+        QuestModeration review = reviews.findById(questId).orElseThrow(ModerationApiFailure::notFound);
+        if (review.getVersion() != expectedVersion || review.getState() != ModerationState.REJECTED)
+            throw ModerationApiFailure.conflict();
+        Instant now = clock.instant();
+        review.appeal(now);
+        reviews.saveAndFlush(review);
+        UUID appealId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO moderation_appeals (id, quest_id, creator_id, moderation_version, reason, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
+                """, appealId, questId, creatorId, expectedVersion, explanation, Timestamp.from(now));
+        return new AppealResult(appealId, "PENDING");
+    }
+
+    private long openReports(UUID questId) {
+        Long count = jdbc.queryForObject(
+                "SELECT count(*) FROM quest_reports WHERE quest_id = ? AND resolution = 'OPEN'",
+                Long.class, questId);
+        return count == null ? 0 : count;
     }
 
     private static String normalizedReason(String value) {
