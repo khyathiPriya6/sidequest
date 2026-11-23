@@ -87,11 +87,20 @@ public class QuestModeration {
         reasonCode = null;
     }
 
+    public void appeal(Instant when) {
+        Objects.requireNonNull(when);
+        if (state != ModerationState.REJECTED) {
+            throw new IllegalStateException("Only rejected drafts can be appealed");
+        }
+        state = ModerationState.UNDER_REVIEW;
+        submittedAt = when;
+    }
+
     /** Human rejection leaves the Quest private; a creator may edit and resubmit. */
     public void reject(Instant when, String code) {
         Objects.requireNonNull(when);
         Objects.requireNonNull(code);
-        if (state != ModerationState.PENDING_REVIEW) {
+        if (state != ModerationState.PENDING_REVIEW && state != ModerationState.UNDER_REVIEW) {
             throw new IllegalStateException("Only a pending review can be rejected");
         }
         if (code.isBlank() || code.length() > 40) throw new IllegalArgumentException("Invalid safety reason");
