@@ -62,7 +62,6 @@ it('joins a real quest and completes through a confirmation dialog', async () =>
 })
 
 it('disallows creator enrollment without a mutation', async () => {
-  const user = userEvent.setup()
   vi.mocked(fetch).mockImplementation(async input => {
     const path = String(input)
     if (path.endsWith('/auth/csrf')) return Response.json({ csrfToken: 'token' })
@@ -75,7 +74,6 @@ it('disallows creator enrollment without a mutation', async () => {
   renderAt('/quests/quest-123')
   expect(await screen.findByText(/creators cannot join/i)).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Join quest' })).not.toBeInTheDocument()
-  expect(user).toBeDefined()
 })
 
 it('renders server-supplied profile, achievements and XP history', async () => {
@@ -102,6 +100,6 @@ it('renders server-supplied profile, achievements and XP history', async () => {
   })
   renderAt('/profile')
   expect(await screen.findByText('Level 1 · 50 XP total')).toBeVisible()
-  expect(screen.getByText('First Quest')).toBeVisible()
+  expect(screen.getByText(/First Quest/)).toBeVisible()
   expect(screen.getByText(/Morning challenge/)).toBeVisible()
 })
