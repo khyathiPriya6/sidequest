@@ -18,6 +18,7 @@ import {
   type QuestDraftInput,
 } from '../features/quests/questApi'
 import styles from './QuestDraftPage.module.css'
+import { getOwnerReview, submitQuestReview, reviewLabel, type OwnerReviewStatus } from '../features/safety/safetyApi'
 
 interface DraftValues {
   title: string
@@ -47,6 +48,8 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
   const [saveError, setSaveError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
+  const [review, setReview] = useState<OwnerReviewStatus | null>(null)
+  const [reviewError, setReviewError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
@@ -55,6 +58,8 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     setLoading(true)
     setEtag(null)
     setLoadError('')
+    setReview(null)
+    setReviewError('')
     void getOwnedQuest(id, controller.signal).then(result => {
       if (controller.signal.aborted) return
       if (result.quest.status !== 'DRAFT') {
@@ -72,6 +77,11 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
       setValues(loaded)
       setInitialValues(loaded)
       setEtag(result.etag)
+      void getOwnerReview(id, controller.signal).then(status => {
+        if (!controller.signal.aborted) setReview(status)
+      }).catch(error => {
+        if (!controller.signal.aborted) setReviewError(error instanceof Error ? error.message : 'Unable to check review status.')
+      })
       setRecovery(false)
       setLoading(false)
     }).catch(error => {
@@ -159,6 +169,7 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
       setValues(next)
       setInitialValues(next)
       setSaved(true)
+      if (mode === 'edit') setReview({ state: 'UNREVIEWED', reasonCode: null })
       setFieldErrors({})
       if (mode === 'create') {
         allowNavigation.current = true
@@ -182,8 +193,27 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     }
   }
 
+  async function requestReview() {
+    if (mode !== 'edit' || busy.current || dirty || !etag || recovery || !review
+      || !['UNREVIEWED', 'REJECTED'].includes(review.state)) return
+    busy.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      const status = await submitQuestReview(id, etag)
+      setReview(status)
+      setSaved(true)
+    } catch (error) {
+      handleFailure(error)
+      setSaveError(error instanceof Error ? error.message : 'Unable to submit for review. Reload your quest before retrying.')
+    } finally {
+      busy.current = false
+      setSaving(false)
+    }
+  }
+
   async function publish() {
-    if (mode !== 'edit' || busy.current || dirty || !etag || recovery) return
+    if (mode !== 'edit' || busy.current || dirty || !etag || recovery || review?.state !== 'APPROVED') return
     busy.current = true
     setSaving(true)
     setSaveError('')
@@ -266,7 +296,25 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
         </div>
       </fieldset></Card>
       {saveError && <Card className={styles.alert} role="alert"><p>{saveError}</p></Card>}
-      {dirty && mode === 'edit' && <p>Save your changes before publishing.</p>}
+      {mode === 'edit' && <Card className={styles.review} aria-label="Quest safety review">
+        <h2>Safety review</h2>
+        {reviewError && <p role="alert">Unable to load review status: {reviewError}. Reload before publishing.</p>}
+        {!review && !reviewError && <p role="status">Checking review status…</p>}
+        {review && <p role="status">{reviewLabel(review)}</p>}
+        {review?.reasonCode && <p>Review category: {review.reasonCode.replaceAll('_', ' ').toLowerCase()}.</p>}
+        {review?.state === 'PENDING_REVIEW' && <p>Your draft is private until a moderator approves it. You can still edit it, but editing resets the review.</p>}
+        {review?.state === 'REJECTED' && <p>Review the safety feedback, edit your draft to address concerns, then submit it again.</p>}
+        {review?.state === 'APPROVED' && <p>Approved. You may publish now. Editing this draft requires another review.</p>}
+        {review?.state === 'HIDDEN' && <p>This quest is not publicly available. Contact moderation for a review before further action.</p>}
+        {review && ['UNREVIEWED', 'REJECTED'].includes(review.state) &&
+          <Button type="button" variant="secondary" loading={saving}
+            disabled={dirty || recovery || !etag || saving}
+            onClick={() => void requestReview()}>Submit for safety review</Button>}
+        {reviewError && <Button type="button" variant="secondary" onClick={() => setLoadAttempt(value => value + 1)}>
+          Reload review status
+        </Button>}
+      </Card>}
+      {dirty && mode === 'edit' && <p>Save your changes before submitting for review or publishing.</p>}
       {recovery && <Card><p>The result of this change must be checked before submitting again. Your entered values are preserved here.</p>
         {mode === 'edit' ? <Button type="button" onClick={() => setReloadOpen(true)}>Reload saved quest</Button>
           : <Link to="/my-quests">Check My quests before creating another draft</Link>}
@@ -276,7 +324,9 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
           {saving ? 'Saving…' : saved ? 'Saved' : dirty ? 'Unsaved changes' : 'No unsaved changes'}
         </span>
         <div className={styles.actionButtons}>
-          {mode === 'edit' && <Button variant="secondary" type="button" loading={saving} disabled={dirty || recovery || !etag} onClick={() => void publish()}>Publish quest</Button>}
+          {mode === 'edit' && <Button variant="secondary" type="button" loading={saving}
+            disabled={dirty || recovery || !etag || review?.state !== 'APPROVED'}
+            onClick={() => void publish()}>Publish approved quest</Button>}
           <Button type="submit" loading={saving} disabled={recovery || (mode === 'edit' && !etag)}>{mode === 'create' ? 'Save draft' : 'Save changes'}</Button>
         </div>
       </div>
