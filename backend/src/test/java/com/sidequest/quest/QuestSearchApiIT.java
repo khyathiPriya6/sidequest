@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sidequest.moderation.QuestModerationRepository;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
@@ -31,6 +32,7 @@ class QuestSearchApiIT {
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
     @Autowired QuestRepository quests;
+    @Autowired QuestModerationRepository moderation;
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
@@ -45,6 +47,7 @@ class QuestSearchApiIT {
 
     @BeforeEach
     void clearQuestFixtures() {
+        moderation.deleteAllInBatch();
         quests.deleteAllInBatch();
     }
 
@@ -128,6 +131,13 @@ class QuestSearchApiIT {
                 "rewardXp", 100)), csrf(owner.client()), null);
         assertThat(created.statusCode()).isEqualTo(201);
         UUID id = UUID.fromString(json.readTree(created.body()).get("id").asText());
+        String etag = created.headers().firstValue("etag").orElseThrow();
+        HttpResponse<String> submitted = send(owner.client(), "POST",
+                "/api/v1/quests/" + id + "/submit-review", null, csrf(owner.client()), etag);
+        assertThat(submitted.statusCode()).isEqualTo(202);
+        var review = moderation.findById(id).orElseThrow();
+        review.approve(java.time.Instant.now());
+        moderation.saveAndFlush(review);
         HttpResponse<String> published = send(owner.client(), "POST",
                 "/api/v1/quests/" + id + "/publish", null, csrf(owner.client()),
                 created.headers().firstValue("etag").orElseThrow());
