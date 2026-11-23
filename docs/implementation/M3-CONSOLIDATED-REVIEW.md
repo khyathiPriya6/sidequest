@@ -16,11 +16,21 @@ This branch descends from the SAFETY-02 and SAFETY-03 branches, contains the SAF
 - `quest_reports_reporter_created_idx` supports efficient report activity counting.
 - Isolated PostgreSQL integration-test source covers boundary conditions and account separation. **Not executed**.
 
+## SAFETY-06 — creator review workflow (Issue #90)
+
+- The web editor now loads the owner-only moderation state alongside the owned Quest, shows `UNREVIEWED`, `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `UNDER_REVIEW`, and `HIDDEN` status to the creator, and explains the private pending period.
+- Only a saved draft can be submitted using `POST /api/v1/quests/{id}/submit-review` with the existing strong Quest ETag and session-bound CSRF token. A pending review does not automatically publish or make the Quest public.
+- The Publish button is unavailable unless the server reports `APPROVED`; publishing still uses the authenticated server endpoint and its own authorization checks. Editor changes reset review and require re-submission.
+- My Quests now links to the review-aware editor instead of offering an immediate Publish button.
+- Existing frontend unit test source updated to exercise review submission, stale ETag, and approved publishing paths. **Tests not executed**.
+- UI cannot recover from a rejected Quest merely by auto-publishing; the creator must edit and re-submit. Full appeals, moderator comment explanations, and report resolution remain separate work.
+- The E04 frontend PR #76 also changes routes and Quest details; resolve and retest any overlapping modules before release.
+
 ## Limitations and release blockers
 
 1. **No automated builds or regression executed.** Tests are code only. Run frontend Vitest/TypeScript build, Java units, isolated PostgreSQL, Playwright full-stack/security tests. Fix failures before review/merge.
 2. **No production migration or deployment performed.** Liquibase 008/009 are new proposed schema changes. Legacy published Quests have no safety record and will disappear when the SAFETY-03 gate is activated. Owner-approved backfill, review inventory, staging, and rollback runbook are required.
-3. **Creator publish UI remains incompatible with the new pending-review workflow.** The existing UI expects synchronous publication. Update it to submit for review, display status/rejection/appeals, and enable publish only after approval.
+3. **Creator workflow code is drafted** for submission, pending/approved state, and approve-only publishing. It is untested, needs accessibility review and must be reconciled with E04 #76. Full appeals and detailed reasons remain outstanding.
 4. **E04 frontend is still a separate draft PR (#76)**; its Quest detail and router edits overlap with M3. Resolve conflicts rather than quietly overwriting E04 Join/Complete.
 5. **Moderator provisioning** is out-of-band via restricted `moderation_staff` table. Need operational secure bootstrap/revoke, a staffed review process and scoped access to private evidence.
 6. **Report handling remains minimal.** No dismiss-without-hide action, appeals, appeal audits, reviewer escalation or report-resolution status. No mass-report auto-removal; no reporter identities sent to creators.
