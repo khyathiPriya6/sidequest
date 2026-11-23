@@ -18,7 +18,7 @@ import {
   type QuestDraftInput,
 } from '../features/quests/questApi'
 import styles from './QuestDraftPage.module.css'
-import { getOwnerReview, submitQuestReview, reviewLabel, type OwnerReviewStatus } from '../features/safety/safetyApi'
+import { getOwnerReview, submitQuestReview, appealQuest, reviewLabel, type OwnerReviewStatus } from '../features/safety/safetyApi'
 
 interface DraftValues {
   title: string
@@ -50,6 +50,7 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
   const [saved, setSaved] = useState(false)
   const [review, setReview] = useState<OwnerReviewStatus | null>(null)
   const [reviewError, setReviewError] = useState('')
+  const [appealReason, setAppealReason] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
@@ -170,7 +171,7 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
       setInitialValues(next)
       setSaved(true)
       if (mode === 'edit') {
-        setReview({ state: 'UNREVIEWED', reasonCode: null })
+        setReview({ state: 'UNREVIEWED', reasonCode: null, version: 0 })
         setReviewError('')
       }
       setFieldErrors({})
@@ -209,6 +210,28 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     } catch (error) {
       handleFailure(error)
       setSaveError(error instanceof Error ? error.message : 'Unable to submit for review. Reload your quest before retrying.')
+    } finally {
+      busy.current = false
+      setSaving(false)
+    }
+  }
+
+  async function appeal() {
+    if (mode !== 'edit' || busy.current || dirty || recovery || !review
+      || review.state !== 'REJECTED' || appealReason.trim().length < 10 || appealReason.trim().length > 1000) return
+    busy.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      await appealQuest(id, review, appealReason)
+      setAppealReason('')
+      const updated = await getOwnerReview(id)
+      setReview(updated)
+    } catch (error) {
+      handleFailure(error)
+      setSaveError(error instanceof Error ? error.message : 'Unable to appeal. Reload your review status before retrying.')
+      // Outcome may be uncertain. Explicitly reload rather than automatically repeating.
+      try { setReview(await getOwnerReview(id)) } catch { setReview(null) }
     } finally {
       busy.current = false
       setSaving(false)
@@ -264,12 +287,12 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     </header>
     <form className={styles.form} onSubmit={submit} noValidate>
       <Card><fieldset className={styles.fields} disabled={saving} aria-label="Quest fields">
-        <Input label="Title" aria-required="true" value={values.title} maxLength={240} error={fieldErrors.title}
+        <Input label="Title" aria-required="true" disabled={review?.state === 'UNDER_REVIEW'} value={values.title} maxLength={240} error={fieldErrors.title}
           hint="Required to save a draft; 3–120 Unicode characters."
           onChange={event => setField('title', event.target.value)} />
         <div className={styles.field}>
           <label htmlFor="quest-description">Description</label>
-          <textarea id="quest-description" value={values.description} maxLength={6000}
+          <textarea id="quest-description" disabled={review?.state === 'UNDER_REVIEW'} value={values.description} maxLength={6000}
             aria-invalid={fieldErrors.description ? true : undefined}
             aria-describedby={fieldErrors.description ? 'quest-description-error' : undefined}
             onChange={event => setField('description', event.target.value)} />
@@ -278,7 +301,7 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
         <div className={styles.row}>
           <div className={styles.field}>
             <label htmlFor="quest-category">Category</label>
-            <select id="quest-category" aria-invalid={!!fieldErrors.category} aria-describedby={fieldErrors.category ? "category-error" : undefined} value={values.category} onChange={event => setField('category', event.target.value as QuestCategory | '')}>
+            <select id="quest-category" disabled={review?.state === 'UNDER_REVIEW'} aria-invalid={!!fieldErrors.category} aria-describedby={fieldErrors.category ? "category-error" : undefined} value={values.category} onChange={event => setField('category', event.target.value as QuestCategory | '')}>
               <option value="">Not specified</option>
               {(['ADVENTURE', 'CREATIVITY', 'FITNESS', 'LEARNING', 'FOOD', 'SOCIAL'] as QuestCategory[]).map(value =>
                 <option key={value} value={value}>{value.charAt(0) + value.slice(1).toLowerCase()}</option>)}
@@ -287,14 +310,14 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
           </div>
           <div className={styles.field}>
             <label htmlFor="quest-difficulty">Difficulty</label>
-            <select id="quest-difficulty" aria-invalid={!!fieldErrors.difficulty} aria-describedby={fieldErrors.difficulty ? "difficulty-error" : undefined} value={values.difficulty} onChange={event => setField('difficulty', event.target.value as QuestDifficulty | '')}>
+            <select id="quest-difficulty" disabled={review?.state === 'UNDER_REVIEW'} aria-invalid={!!fieldErrors.difficulty} aria-describedby={fieldErrors.difficulty ? "difficulty-error" : undefined} value={values.difficulty} onChange={event => setField('difficulty', event.target.value as QuestDifficulty | '')}>
               <option value="">Not specified</option>
               {(['EASY', 'MEDIUM', 'HARD'] as QuestDifficulty[]).map(value =>
                 <option key={value} value={value}>{value.charAt(0) + value.slice(1).toLowerCase()}</option>)}
             </select>
             {fieldErrors.difficulty && <span id="difficulty-error" className={styles.error}>{fieldErrors.difficulty}</span>}
           </div>
-          <Input label="Reward XP" type="number" min="1" max="1000" value={values.rewardXp}
+          <Input label="Reward XP" disabled={review?.state === 'UNDER_REVIEW'} type="number" min="1" max="1000" value={values.rewardXp}
             error={fieldErrors.rewardXp} placeholder="Optional" onChange={event => setField('rewardXp', event.target.value)} />
         </div>
       </fieldset></Card>
@@ -306,7 +329,16 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
         {review && <p role="status">{reviewLabel(review)}</p>}
         {review?.reasonCode && <p>Review category: {review.reasonCode.replaceAll('_', ' ').toLowerCase()}.</p>}
         {review?.state === 'PENDING_REVIEW' && <p>Your draft is private until a moderator approves it. You can still edit it, but editing resets the review.</p>}
-        {review?.state === 'REJECTED' && <p>Review the safety feedback, edit your draft to address concerns, then submit it again.</p>}
+        {review?.state === 'REJECTED' && <p>You may revise your Quest and submit it again, or explain why this rejection should be reconsidered.</p>}
+        {review?.state === 'UNDER_REVIEW' && <p>Your appeal is pending. Editing is temporarily unavailable until a moderator decides.</p>}
+        {review?.state === 'REJECTED' && !dirty && <div className={styles.appeal}>
+          <label htmlFor="appeal-reason">Why should this rejection be reconsidered?</label>
+          <textarea id="appeal-reason" minLength={10} maxLength={1000} value={appealReason}
+            onChange={event => setAppealReason(event.target.value)} />
+          <Button type="button" variant="secondary" loading={saving}
+            disabled={saving || recovery || appealReason.trim().length < 10 || appealReason.trim().length > 1000}
+            onClick={() => void appeal()}>Request appeal</Button>
+        </div>}
         {review?.state === 'APPROVED' && <p>Approved. You may publish now. Editing this draft requires another review.</p>}
         {review?.state === 'HIDDEN' && <p>This quest is not publicly available. Contact moderation for a review before further action.</p>}
         {review && ['UNREVIEWED', 'REJECTED'].includes(review.state) &&
@@ -330,7 +362,7 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
           {mode === 'edit' && <Button variant="secondary" type="button" loading={saving}
             disabled={dirty || recovery || !etag || review?.state !== 'APPROVED'}
             onClick={() => void publish()}>Publish approved quest</Button>}
-          <Button type="submit" loading={saving} disabled={recovery || (mode === 'edit' && !etag)}>{mode === 'create' ? 'Save draft' : 'Save changes'}</Button>
+          <Button type="submit" loading={saving} disabled={recovery || review?.state === 'UNDER_REVIEW' || (mode === 'edit' && !etag)}>{mode === 'create' ? 'Save draft' : 'Save changes'}</Button>
         </div>
       </div>
     </form>
