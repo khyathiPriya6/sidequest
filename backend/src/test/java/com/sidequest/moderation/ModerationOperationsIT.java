@@ -288,6 +288,30 @@ class ModerationOperationsIT {
                 "SELECT count(*) FROM moderation_audit WHERE quest_id = ?", Long.class, id)).isEqualTo(2L);
     }
 
+    @Test
+    void publishedQuestWithForgedPendingStateCannotBeApprovedWithoutIntakeProvenance() throws Exception {
+        Session creator = register();
+        Session moderator = register();
+        jdbc.update("INSERT INTO moderation_staff (user_id) VALUES (?)", moderator.id());
+        var created = call(creator, "POST", "/api/v1/quests", json.writeValueAsString(Map.of(
+                "title", "Unverified published content",
+                "description", "This published record has no authorized intake evidence.",
+                "category", "LEARNING", "difficulty", "EASY", "rewardXp", 10)), null);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        jdbc.update("UPDATE quests SET status = 'PUBLISHED', published_at = CURRENT_TIMESTAMP WHERE id = ?", id);
+        jdbc.update("""
+                UPDATE quest_moderation SET state = 'PENDING_REVIEW',
+                    submitted_at = CURRENT_TIMESTAMP, reviewed_at = NULL
+                WHERE quest_id = ?
+                """, id);
+        assertThat(call(moderator, "POST", "/api/v1/moderation/quests/" + id + "/decisions",
+                json.writeValueAsString(Map.of("action", "APPROVE", "reasonCode", "",
+                        "expectedVersion", 0)), null).statusCode()).isEqualTo(409);
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(404);
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM moderation_audit WHERE quest_id = ?", Long.class, id)).isZero();
+    }
+
     private Session register() throws Exception {
         HttpClient client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
         String username = "m" + UUID.randomUUID().toString().replace("-", "").substring(0, 19);
