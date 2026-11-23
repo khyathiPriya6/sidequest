@@ -119,7 +119,7 @@ class QuestService {
         if (!errors.isEmpty()) throw QuestApiFailure.validation(errors);
         QuestModeration review = moderation.findById(id).orElseGet(() -> QuestModeration.unreviewed(quest));
         if (review.getState() != ModerationState.PENDING_REVIEW) {
-            if (review.approved()) throw QuestApiFailure.conflict();
+            if (review.approved() || review.getState() == ModerationState.UNDER_REVIEW) throw QuestApiFailure.conflict();
             review.submit(safety.assess(quest.getTitle(), quest.getDescription()), clock.instant());
             moderation.saveAndFlush(review);
         }
