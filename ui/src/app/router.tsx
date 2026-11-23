@@ -8,6 +8,7 @@ import { AuthPage } from '../features/auth/AuthPage'
 import { RequireAuth } from '../features/auth/RequireAuth'
 import { MyQuestsPage } from '../pages/MyQuestsPage'
 import { QuestDraftPage } from '../pages/QuestDraftPage'
+import { ModeratorDashboard } from '../features/safety/ModeratorDashboard'
 
 function LegacyQuestDashboardRedirect() {
   const location = useLocation()
@@ -38,6 +39,7 @@ export function createAppRoutes(): RouteObject[] {
             { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <QuestDraftPage mode="edit" /> },
             { path: '/my/quests/:id/edit', element: <LegacyQuestDashboardEditRedirect /> },
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
+            { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
             { path: '/profile', handle: { title: 'Your profile' }, element: <FeaturePlaceholder title="Your profile" description="Your profile and earned progress will be available after sign-in is ready." /> },
           ],
         },
