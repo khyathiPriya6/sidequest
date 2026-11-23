@@ -46,6 +46,14 @@ This branch descends from the SAFETY-02 and SAFETY-03 branches, contains the SAF
 - Isolated PostgreSQL HTTP test source covers nonstaff denial, missing-review fail-closed visibility, single intake, approval, approval audit, new Join, and rejection. **Not executed.**
 - Release preparation is documented in `docs/implementation/M3-LEGACY-ROLLOUT.md`. Do not apply migrations to existing databases or merge until owner review, staging rehearsal, moderator staffing, E04 integration and passing regression tests.
 
+## SAFETY-09 — review state and creator workflow hardening (Issue #93)
+
+- A REJECTED draft may no longer be submitted for review again without changing the draft. Creators can edit (which invalidates prior clearance) and resubmit, or use the separate version-checked appeal path. The backend enforces this even if the UI is bypassed.
+- A PUBLISHED Quest that was subsequently HIDDEN no longer returns a successful idempotent `publish` response, which could falsely imply it is publicly visible. It returns `409 moderation_not_approved`, leaving the public visibility check fail-closed.
+- The creator editor can explicitly fetch the latest review decision while pending; approval enables publishing without unnecessarily editing or repeating the review request.
+- HTTP/PostgreSQL and Vitest test *source* covers rejected resubmission, hidden publish retry and pending-to-approved state refresh. **Not executed**, including related E04/React regressions.
+- Verified GitHub branch PR #88 still targets `main` and is draft. No GitHub Actions workflow runs were reported for that branch at the time of this review. Local network access cannot fetch a full fresh repository clone; do not imply any test passed.
+
 ## Limitations and release blockers
 
 1. **No automated builds or regression executed.** Tests are code only. Run frontend Vitest/TypeScript build, Java units, isolated PostgreSQL, Playwright full-stack/security tests. Fix failures before review/merge.
