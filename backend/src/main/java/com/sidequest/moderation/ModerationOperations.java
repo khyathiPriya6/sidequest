@@ -33,13 +33,15 @@ class ModerationOperations {
     private final QuestRepository quests;
     private final QuestModerationRepository reviews;
     private final Clock clock;
+    private final AccountAbuseQuota abuseQuota;
 
     ModerationOperations(JdbcTemplate jdbc, QuestRepository quests,
-                         QuestModerationRepository reviews, Clock clock) {
+                         QuestModerationRepository reviews, Clock clock, AccountAbuseQuota abuseQuota) {
         this.jdbc = jdbc;
         this.quests = quests;
         this.reviews = reviews;
         this.clock = clock;
+        this.abuseQuota = abuseQuota;
     }
 
     @Transactional
@@ -49,6 +51,11 @@ class ModerationOperations {
         Quest quest = quests.findApprovedPublished(questId, QuestStatus.PUBLISHED, ModerationState.APPROVED)
                 .orElseThrow(ModerationApiFailure::notFound);
         if (quest.getCreatorId().equals(reporter)) throw ModerationApiFailure.invalid();
+        UUID prior = jdbc.query("""
+                SELECT id FROM quest_reports WHERE quest_id = ? AND reporter_id = ?
+                """, rs -> rs.next() ? rs.getObject(1, UUID.class) : null, questId, reporter);
+        if (prior != null) return new ReportResult(prior, false);
+        abuseQuota.requireNewReport(reporter);
         UUID reportId = UUID.randomUUID();
         int inserted = jdbc.update("""
                 INSERT INTO quest_reports (id, quest_id, reporter_id, reason, created_at)
