@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button/Button'
 import { Card } from '../components/ui/Card/Card'
 import { QuestApiError, displayEnum, getQuest, type Quest } from '../features/quests/questApi'
 import styles from './QuestDetailPage.module.css'
+import { ReportQuest } from '../features/safety/ReportQuest'
 
 type LoadState =
   | { kind: 'loading' }
@@ -83,6 +84,7 @@ function QuestDetail({ quest }: { quest: Quest }) {
       <p>{quest.description || 'The creator has not added a description yet.'}</p>
     </Card>
 
+    <ReportQuest questId={quest.id} />
     <p className={styles.note}>Joining and completion are not part of this release.</p>
   </article>
 }
