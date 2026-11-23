@@ -10,7 +10,7 @@ paths:
     get:
       operationId: listPublishedQuests
       security: []
-      description: Returns published quests only, ordered by createdAt descending and then id descending.
+      description: Returns only published Quests with explicit approved safety review, ordered by createdAt descending and id descending. Published legacy Quests without moderation records are hidden until reviewed.
       parameters:
         - name: q
           in: query
@@ -57,7 +57,7 @@ paths:
     get:
       operationId: getPublishedQuest
       security: [{sessionCookie: []}, {}]
-      description: Published quests are public. A creator may also read their own draft or archived quest; others receive the same 404 as for a missing ID.
+      description: Only approved published Quests are public. An authenticated creator may read their own Quest regardless of review status; others receive 404 for unapproved or missing resources.
       parameters:
         - {$ref: '#/components/parameters/QuestId'}
       responses:
@@ -88,7 +88,7 @@ paths:
             example: {title: Revised walking route, description: A description long enough to save.}
       responses:
         '200':
-          description: Updated draft. Omitted fields are unchanged; null clears optional fields.
+          description: Updated draft. Omitted fields are unchanged; null clears optional fields. Updating a submitted/approved draft invalidates its safety review.
           headers:
             ETag: {$ref: '#/components/headers/ETag'}
           content:
@@ -115,7 +115,7 @@ paths:
           schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
       responses:
         '200':
-          description: Quest published or unchanged published representation returned for an idempotent retry.
+          description: Quest published only when moderation state is APPROVED; an already-published retry remains idempotent. Otherwise 409 moderation_not_approved.
           headers:
             ETag: {$ref: '#/components/headers/ETag'}
           content:
@@ -129,6 +129,253 @@ paths:
         '412': {$ref: '#/components/responses/Stale'}
         '422': {$ref: '#/components/responses/Invalid'}
         '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/quests/{id}/submit-review:
+    post:
+      operationId: submitQuestForReview
+      security: [{sessionCookie: [], csrfHeader: []}]
+      description: Owner submits a complete DRAFT to manual moderation. Automated keyword signals only prioritize review; they never approve or reject. Repeating a pending submission is idempotent. The Quest remains DRAFT and private until a trusted moderator approves and the owner publishes.
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"
+    post:
+      operationId: archiveQuest
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+        - name: If-Match
+          in: header
+          required: true
+          description: Exact current strong ETag. A syntactically valid stale ETag is accepted for an already-archived retry.
+          schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+      responses:
+        '200':
+          description: Draft or published quest archived; an already-archived representation is unchanged.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/me/quests:
+    get:
+      operationId: listMyQuests
+      security: [{sessionCookie: []}]
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/QuestStatus'}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Only quests created by the authenticated user.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestPage'}
+        '400': {$ref: '#/components/responses/InvalidParameter'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/me/quests/{id}:
+    get:
+      operationId: getMyQuest
+      security: [{sessionCookie: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+      responses:
+        '200':
+          description: Quest owned by the authenticated user.
+          headers:
+            ETag: {$ref: '#/components/headers/ETag'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Quest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-id
+      description: HttpOnly Secure SameSite=Lax session cookie; local-only HTTP profile uses sidequest-local-id.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-TOKEN
+      description: Session-bound synchronizer token fetched from GET /api/v1/auth/csrf.
+  parameters:
+    QuestId:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    Page:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    Size:
+      name: size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+  headers:
+    ETag:
+      description: Required strong ETag derived from the optimistic-lock version, a quoted canonical decimal from 0 through 9223372036854775807. Clients must reject missing or malformed response tags and reload without automatically replaying mutations.
+      schema: {type: string, pattern: '^"(0|[1-9][0-9]*)"$'}
+  schemas:
+    CreateDraft:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: {type: string, minLength: 3, maxLength: 120, description: Unicode code points after trimming.}
+        description: {type: [string, 'null'], minLength: 10, maxLength: 3000}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null'], minimum: 1, maximum: 1000}
+    PatchDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        title: {type: string, minLength: 3, maxLength: 120}
+        description: {type: [string, 'null'], minLength: 10, maxLength: 3000}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null'], minimum: 1, maximum: 1000}
+    ModerationStatus:
+      type: object
+      additionalProperties: false
+      required: [state, reasonCode]
+      properties:
+        state:
+          type: string
+          enum: [UNREVIEWED, PENDING_REVIEW, APPROVED, REJECTED, UNDER_REVIEW, HIDDEN]
+        reasonCode: {type: [string, 'null'], description: Coarse triage category, never a detailed matching rule.}
+    Quest:
+      type: object
+      additionalProperties: false
+      required: [id, creatorId, title, description, category, difficulty, rewardXp, status, createdAt, updatedAt, publishedAt, archivedAt]
+      properties:
+        id: {type: string, format: uuid}
+        creatorId: {type: string, format: uuid}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        category: {oneOf: [{$ref: '#/components/schemas/QuestCategory'}, {type: 'null'}]}
+        difficulty: {oneOf: [{$ref: '#/components/schemas/QuestDifficulty'}, {type: 'null'}]}
+        rewardXp: {type: [integer, 'null']}
+        status: {$ref: '#/components/schemas/QuestStatus'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        publishedAt: {type: [string, 'null'], format: date-time}
+        archivedAt: {type: [string, 'null'], format: date-time}
+    QuestPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content: {type: array, items: {$ref: '#/components/schemas/Quest'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
+        hasNext: {type: boolean}
+        hasPrevious: {type: boolean}
+    QuestCategory:
+      type: string
+      enum: [ADVENTURE, CREATIVITY, FITNESS, LEARNING, FOOD, SOCIAL]
+    QuestDifficulty:
+      type: string
+      enum: [EASY, MEDIUM, HARD]
+    QuestStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, code]
+      properties:
+        type: {type: string, const: 'about:blank'}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        code: {type: string}
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: {type: string}
+              code: {type: string}
+              message: {type: string}
+  responses:
+    Malformed:
+      description: Malformed JSON or unsupported server-managed property.
+      content: &problem
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    InvalidParameter:
+      description: Invalid pagination, category/difficulty, or overlong search query.
+      content: *problem
+    Unauthorized:
+      description: Missing or expired authenticated session.
+      content: *problem
+    CsrfFailure:
+      description: Missing or invalid CSRF token.
+      content: *problem
+    NotFound:
+      description: Quest is absent or not owned by the caller.
+      content: *problem
+    Conflict:
+      description: Quest is not in an editable draft state.
+      content: *problem
+    Stale:
+      description: If-Match is stale; current ETag is returned when available.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content: *problem
+    PreconditionRequired:
+      description: If-Match is required for draft updates, publish, and archive.
+      content: *problem
+    Invalid:
+      description: Domain validation failed; includes field-level errors.
+      content: *problem
+}
+      responses:
+        '202':
+          description: Pending private review; no public visibility is granted.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ModerationStatus'}
+        '400': {$ref: '#/components/responses/Malformed'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfFailure'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/Stale'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+  /api/v1/me/quests/{id}/moderation:
+    get:
+      operationId: getMyQuestModeration
+      security: [{sessionCookie: []}]
+      description: Owner-only review status; no reporter or private moderator details are returned. A missing legacy review row is UNREVIEWED (not approved).
+      parameters:
+        - {$ref: '#/components/parameters/QuestId'}
+      responses:
+        '200':
+          description: Private review state for the authenticated owner.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ModerationStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /api/v1/quests/{id}/archive:
     post:
       operationId: archiveQuest
