@@ -35,7 +35,7 @@ export function ModeratorDashboard() {
     setBusyId(chosen.item.questId)
     setError('')
     try {
-      await decideReview(chosen.item, chosen.action, chosen.action === 'APPROVE' ? '' : reason)
+      await decideReview(chosen.item, chosen.action, chosen.action === 'APPROVE' || chosen.action === 'DISMISS_REPORTS' ? '' : reason)
       setConfirm(null)
       setRevision(n => n + 1) // refresh authoritative server state, never replay
     } catch (e) {
@@ -59,14 +59,18 @@ export function ModeratorDashboard() {
       <p>Status: {item.state.replaceAll('_', ' ')} · Quest: {item.questStatus}</p>
       <p>Reports: {item.reports} · Review version: {item.version}</p>
       {item.reasonCode && <p>Screening flag: {item.reasonCode.replaceAll('_', ' ')}</p>}
+      {item.appealReason && <p><strong>Creator appeal:</strong> {item.appealReason}</p>}
       <p>Review the full context and policy before taking action. Do not decide solely from keywords or report counts.</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-        {item.state === 'PENDING_REVIEW' && <>
+        {(item.state === 'PENDING_REVIEW' || item.state === 'UNDER_REVIEW') && <>
           <Button disabled={!!busyId} onClick={() => setConfirm({ item, action: 'APPROVE' })}>Approve</Button>
           <Button disabled={!!busyId} variant="secondary" onClick={() => setConfirm({ item, action: 'REJECT' })}>Reject</Button>
         </>}
-        {item.state === 'APPROVED' && item.questStatus === 'PUBLISHED' &&
-          <Button disabled={!!busyId} variant="destructive" onClick={() => setConfirm({ item, action: 'HIDE' })}>Hide quest</Button>}
+        {item.state === 'APPROVED' && item.questStatus === 'PUBLISHED' && <>
+          <Button disabled={!!busyId} variant="destructive" onClick={() => setConfirm({ item, action: 'HIDE' })}>Hide quest</Button>
+          {item.reports > 0 && <Button disabled={!!busyId} variant="secondary"
+            onClick={() => setConfirm({ item, action: 'DISMISS_REPORTS' })}>Dismiss reports</Button>}
+        </>}
       </div>
     </Card>)}
     {!loading && !restricted && data && data.totalPages > 1 && <nav aria-label="Review queue pages"
@@ -78,7 +82,7 @@ export function ModeratorDashboard() {
     {confirm && <Card role="group" aria-label="Confirm moderation decision" style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2>Confirm {confirm.action.toLowerCase()}?</h2>
       <p>{confirm.item.title}</p>
-      {confirm.action !== 'APPROVE' && <>
+      {confirm.action !== 'APPROVE' && confirm.action !== 'DISMISS_REPORTS' && <>
         <label htmlFor="moderation-reason">Reason code</label>
         <select id="moderation-reason" value={reason} onChange={e => setReason(e.target.value)}>
           {['DANGEROUS_ACT', 'SELF_HARM', 'ILLEGAL', 'VIOLENCE_HARASSMENT',
