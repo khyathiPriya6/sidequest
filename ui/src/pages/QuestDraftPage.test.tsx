@@ -140,6 +140,22 @@ it('allows approved Quest to publish only after review state is confirmed', asyn
   await waitFor(() => expect(router.state.location.pathname).toBe('/quests/draft-1'))
 })
 
+it('can check pending review status and unlock publication after a moderator approves', async () => {
+  let approved = false
+  intercept(path => {
+    if (path.endsWith('/moderation')) return Response.json(
+      approved ? { state: 'APPROVED', reasonCode: null, version: 2 }
+        : { state: 'PENDING_REVIEW', reasonCode: null, version: 1 })
+  })
+  renderAt('/quests/draft-1/edit')
+  expect(await screen.findByText('Awaiting safety review')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeDisabled()
+  approved = true
+  await userEvent.click(screen.getByRole('button', { name: 'Check for review decision' }))
+  expect(await screen.findByText('Approved for publishing')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeEnabled()
+})
+
 it('preserves edits and forbids publication after an uncertain save response', async () => {
   let patches = 0
   intercept((_path, init) => {
