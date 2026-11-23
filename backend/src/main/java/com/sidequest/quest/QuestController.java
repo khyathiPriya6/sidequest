@@ -81,6 +81,20 @@ public class QuestController {
         return ResponseEntity.ok().eTag(quest.etag()).body(quest.body());
     }
 
+    @PostMapping("/api/v1/quests/{id}/submit-review")
+    ResponseEntity<QuestService.ModerationSubmission> submitForReview(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return ResponseEntity.accepted().body(service.submitForReview(principal.userId(), id, ifMatch));
+    }
+
+    @GetMapping("/api/v1/me/quests/{id}/moderation")
+    QuestService.ModerationSubmission getReviewStatus(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable UUID id) {
+        return service.reviewStatus(principal.userId(), id);
+    }
+
     @PostMapping("/api/v1/quests/{id}/archive")
     ResponseEntity<QuestDtos.QuestView> archive(
             @AuthenticationPrincipal UserPrincipal principal,
