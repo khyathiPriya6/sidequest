@@ -67,7 +67,7 @@ public class QuestModeration {
         Objects.requireNonNull(screening);
         Objects.requireNonNull(now);
         if (state == ModerationState.PENDING_REVIEW) return;
-        if (state != ModerationState.UNREVIEWED && state != ModerationState.REJECTED) {
+        if (state != ModerationState.UNREVIEWED) {
             throw new IllegalStateException("Quest cannot be submitted from this review state");
         }
         state = ModerationState.PENDING_REVIEW;
