@@ -7,6 +7,9 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import com.sidequest.moderation.ModerationState;
+import com.sidequest.moderation.QuestModeration;
+import jakarta.persistence.criteria.AbstractQuery;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -26,7 +29,7 @@ class QuestRepositoryCustomImpl implements QuestRepositoryCustom {
         CriteriaQuery<Quest> select = builder.createQuery(Quest.class);
         Root<Quest> root = select.from(Quest.class);
         var pattern = query == null ? null : builder.parameter(String.class, "searchPattern");
-        select.select(root).where(builder.and(predicates(builder, root, category, difficulty, pattern)))
+        select.select(root).where(builder.and(predicates(builder, select, root, category, difficulty, pattern)))
                 .orderBy(builder.desc(root.get("createdAt")), builder.desc(root.get("id")));
 
         TypedQuery<Quest> results = entityManager.createQuery(select);
@@ -44,17 +47,23 @@ class QuestRepositoryCustomImpl implements QuestRepositoryCustom {
         Root<Quest> countRoot = count.from(Quest.class);
         var countPattern = query == null ? null : builder.parameter(String.class, "searchPattern");
         count.select(builder.count(countRoot))
-                .where(builder.and(predicates(builder, countRoot, category, difficulty, countPattern)));
+                .where(builder.and(predicates(builder, count, countRoot, category, difficulty, countPattern)));
         TypedQuery<Long> countQuery = entityManager.createQuery(count);
         if (countPattern != null) countQuery.setParameter("searchPattern", "%" + escapeLike(query) + "%");
         return new PageImpl<>(results.getResultList(), pageable, countQuery.getSingleResult());
     }
 
     private static Predicate[] predicates(
-            CriteriaBuilder builder, Root<Quest> root, QuestCategory category,
+            CriteriaBuilder builder, AbstractQuery<?> query, Root<Quest> root, QuestCategory category,
             QuestDifficulty difficulty, jakarta.persistence.criteria.Expression<String> pattern) {
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(builder.equal(root.get("status"), QuestStatus.PUBLISHED));
+        var approval = query.subquery(Integer.class);
+        Root<QuestModeration> review = approval.from(QuestModeration.class);
+        approval.select(builder.literal(1)).where(
+                builder.equal(review.get("questId"), root.get("id")),
+                builder.equal(review.get("state"), ModerationState.APPROVED));
+        predicates.add(builder.exists(approval));
         if (category != null) predicates.add(builder.equal(root.get("category"), category));
         if (difficulty != null) predicates.add(builder.equal(root.get("difficulty"), difficulty));
         if (pattern != null) {
