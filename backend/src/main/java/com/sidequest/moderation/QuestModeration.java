@@ -110,6 +110,21 @@ public class QuestModeration {
         reasonCode = code;
     }
 
+    /** Staff-only legacy review; hides a pre-existing published Quest without deleting XP. */
+    public void rejectLegacy(Instant when, String code) {
+        Objects.requireNonNull(when);
+        Objects.requireNonNull(code);
+        if (state != ModerationState.PENDING_REVIEW) {
+            throw new IllegalStateException("Only pending legacy reviews may be rejected");
+        }
+        if (code.isBlank() || code.length() > 40) {
+            throw new IllegalArgumentException("Invalid safety reason");
+        }
+        state = ModerationState.HIDDEN;
+        reviewedAt = when;
+        reasonCode = code;
+    }
+
     /** Internal action called only by server-authorized moderation operations. */
     public void hide(Instant when, String code) {
         Objects.requireNonNull(when);
