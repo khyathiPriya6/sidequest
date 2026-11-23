@@ -53,7 +53,7 @@ public class QuestModeration {
     public void invalidateReview() {
         if (state == ModerationState.UNREVIEWED) return;
         if (state != ModerationState.PENDING_REVIEW && state != ModerationState.APPROVED
-                && state != ModerationState.REJECTED && state != ModerationState.UNDER_REVIEW) {
+                && state != ModerationState.REJECTED) {
             throw new IllegalStateException("Cannot edit a hidden moderation record");
         }
         state = ModerationState.UNREVIEWED;
