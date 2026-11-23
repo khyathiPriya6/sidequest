@@ -26,6 +26,17 @@ This branch descends from the SAFETY-02 and SAFETY-03 branches, contains the SAF
 - UI cannot recover from a rejected Quest merely by auto-publishing; the creator must edit and re-submit. Full appeals, moderator comment explanations, and report resolution remain separate work.
 - The E04 frontend PR #76 also changes routes and Quest details; resolve and retest any overlapping modules before release.
 
+## SAFETY-07 — appeals and report disposition (Issue #91)
+
+- New append-only Liquibase changeset `010-moderation-appeals.sql` adds creator appeals and lifecycle fields for report resolutions. Previously recorded reports become `OPEN` without losing evidence.
+- Rejected DRAFT creators can submit one reasoned appeal per rejection version with session, CSRF, ownership and optimistic-version checks. The Quest becomes `UNDER_REVIEW`, remains private and cannot be edited until the appeal is resolved.
+- The staff queue displays the appeal explanation; authorized moderators can APPROVE or REJECT an appeal, updating the appeal record and adding a transactional moderation audit entry.
+- Staff can dismiss unresolved reports without hiding the Quest, providing a coded decision rationale in the audit. Hiding a Quest marks its open reports `ACTIONED`. Report counts and queues consider only `OPEN` reports.
+- Quest row locks serialize new reports against moderator hide/dismiss transitions. Repeated reports retain the same receipt but cannot create a second report for the same reporter/Quest after disposition.
+- Frontend creator appeal form and moderator dismissal action implemented with authorization-safe API calls and deliberate no-auto-retry. Backend HTTP/PostgreSQL and UI test source added; **tests have not been executed**.
+- **Excluded:** appeals of already published hidden Quests, independent appeal panels, notifications, text/media AI screening, and repeated report submission by the same account after dismissal.
+- Legacy published Quest approval needs separate documented rollout in `docs/implementation/M3-LEGACY-ROLLOUT.md`; current staff APPROVE endpoint is draft-only.
+
 ## Limitations and release blockers
 
 1. **No automated builds or regression executed.** Tests are code only. Run frontend Vitest/TypeScript build, Java units, isolated PostgreSQL, Playwright full-stack/security tests. Fix failures before review/merge.
@@ -33,7 +44,7 @@ This branch descends from the SAFETY-02 and SAFETY-03 branches, contains the SAF
 3. **Creator workflow code is drafted** for submission, pending/approved state, and approve-only publishing. It is untested, needs accessibility review and must be reconciled with E04 #76. Full appeals and detailed reasons remain outstanding.
 4. **E04 frontend is still a separate draft PR (#76)**; its Quest detail and router edits overlap with M3. Resolve conflicts rather than quietly overwriting E04 Join/Complete.
 5. **Moderator provisioning** is out-of-band via restricted `moderation_staff` table. Need operational secure bootstrap/revoke, a staffed review process and scoped access to private evidence.
-6. **Report handling remains minimal.** No dismiss-without-hide action, appeals, appeal audits, reviewer escalation or report-resolution status. No mass-report auto-removal; no reporter identities sent to creators.
+6. **Appeals and report resolution are now drafted**, including rejection appeals, staff decisions and report dismissal. They remain untested; hidden published appeals, reporter notifications, independent escalation and reviewer history UI remain outstanding.
 7. **Abuse quotas are per-account only**, not per-IP or device; fresh accounts and coordinated activity can evade them. Account limits may disadvantage legitimate heavy users. Improve observability, policy tuning, and risk scoring without excessive fingerprinting.
 8. No mature AI classifier or image moderation. The current deterministic screen only flags some risky text. `NO_SIGNAL` **never grants automatic approval**.
 9. **Serious-harm participant completion policy remains undecided**; current already-joined player can still complete a hidden Quest and earn ledger XP. Evaluate a separate safety hold with clear criteria and historical XP preservation.
