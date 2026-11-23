@@ -24,6 +24,9 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: 
   if (url.pathname === '/api/v1/auth/me') return Promise.resolve(Response.json({
     id: '00000000-0000-4000-8000-000000000001', email: 'player@example.test', username: 'quest_player',
   }))
+  if (url.pathname === '/api/v1/me/quests/draft-1/moderation') {
+    return Promise.resolve(Response.json({ state: 'UNREVIEWED', reasonCode: null }))
+  }
   if (url.pathname === '/api/v1/me/quests/draft-1') {
     return Promise.resolve(Response.json(quest, { status: 200, headers: { ETag: '"4"' } }))
   }
@@ -95,27 +98,46 @@ it.each(['', '   ', '😀😀', '😀'.repeat(121)])('rejects invalid required t
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
 })
 
-it('requires saving edited content before publication and uses the newly saved ETag', async () => {
-  let savedTitle = quest.title
-  let publishedTitle = ''
+it('requires a saved draft and approval before publish; submission uses saved ETag', async () => {
+  let submissionEtag = ''
+  let published = false
   intercept((path, init) => {
     if (init?.method === 'PATCH') {
-      savedTitle = JSON.parse(String(init.body)).title
-      return Response.json({ ...quest, title: savedTitle }, { headers: { ETag: '"5"' } })
+      return Response.json({ ...quest, title: 'Latest saved title' }, { headers: { ETag: '"5"' } })
+    }
+    if (path.endsWith('/submit-review')) {
+      submissionEtag = new Headers(init?.headers).get('If-Match') ?? ''
+      return Response.json({ state: 'PENDING_REVIEW', reasonCode: null }, { status: 202 })
     }
     if (path.endsWith('/publish')) {
-      expect(new Headers(init?.headers).get('If-Match')).toBe('"5"')
-      publishedTitle = savedTitle
-      return Response.json({ ...quest, title: savedTitle, status: 'PUBLISHED' }, { headers: { ETag: '"6"' } })
+      published = true
+      return Response.json({ ...quest, status: 'PUBLISHED' }, { headers: { ETag: '"6"' } })
     }
   })
   renderAt('/quests/draft-1/edit')
   fireEvent.change(await screen.findByRole('textbox', { name: 'Title' }), { target: { value: 'Latest saved title' } })
-  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeDisabled()
   await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Publish quest' })).toBeEnabled())
-  await userEvent.click(screen.getByRole('button', { name: 'Publish quest' }))
-  await waitFor(() => expect(publishedTitle).toBe('Latest saved title'))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit for safety review' })).toBeEnabled())
+  await userEvent.click(screen.getByRole('button', { name: 'Submit for safety review' }))
+  expect(await screen.findByText('Awaiting safety review')).toBeVisible()
+  expect(submissionEtag).toBe('"5"')
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeDisabled()
+  expect(published).toBe(false)
+})
+
+it('allows approved Quest to publish only after review state is confirmed', async () => {
+  intercept((path) => {
+    if (path.endsWith('/moderation')) return Response.json({ state: 'APPROVED', reasonCode: null })
+    if (path.endsWith('/publish')) return Response.json(
+      { ...quest, status: 'PUBLISHED', publishedAt: '2026-01-01T12:00:00Z' },
+      { headers: { ETag: '"5"' } })
+  })
+  const router = renderAt('/quests/draft-1/edit')
+  const publish = await screen.findByRole('button', { name: 'Publish approved quest' })
+  await waitFor(() => expect(publish).toBeEnabled())
+  await userEvent.click(publish)
+  await waitFor(() => expect(router.state.location.pathname).toBe('/quests/draft-1'))
 })
 
 it('preserves edits and forbids publication after an uncertain save response', async () => {
@@ -129,7 +151,7 @@ it('preserves edits and forbids publication after an uncertain save response', a
   expect(await screen.findByRole('alert')).toHaveTextContent('valid version')
   expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('Keep my edits')
   expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeDisabled()
   expect(patches).toBe(1)
   await userEvent.click(screen.getByRole('button', { name: 'Reload saved quest' }))
   await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
@@ -139,21 +161,15 @@ it('preserves edits and forbids publication after an uncertain save response', a
   await waitFor(() => expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(quest.title))
 })
 
-it('renders every publication field error beside its control', async () => {
-  intercept(path => path.endsWith('/publish') ? Response.json({ errors: [
-    { field: 'category', code: 'required', message: 'Choose a category.' },
-    { field: 'difficulty', code: 'required', message: 'Choose difficulty.' },
-    { field: 'description', code: 'required', message: 'Add a description.' },
-    { field: 'rewardXp', code: 'required', message: 'Add XP.' },
-  ] }, { status: 422 }) : undefined)
+it('shows publication validation from the safety submission step', async () => {
+  intercept(path => path.endsWith('/submit-review') ? Response.json({
+    code: 'validation_failed', detail: 'Complete the Quest fields.',
+    errors: [{ field: 'description', code: 'required', message: 'Add a description.' }],
+  }, { status: 422 }) : undefined)
   renderAt('/quests/draft-1/edit')
-  await screen.findByRole('textbox', { name: 'Title' })
-  await userEvent.click(screen.getByRole('button', { name: 'Publish quest' }))
-  expect(await screen.findByText('Choose a category.')).toBeVisible()
-  expect(screen.getByRole('combobox', { name: /Category/ })).toHaveAccessibleDescription('Choose a category.')
-  expect(screen.getByRole('combobox', { name: /Difficulty/ })).toHaveAccessibleDescription('Choose difficulty.')
-  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAccessibleDescription('Add a description.')
-  expect(screen.getByRole('spinbutton', { name: 'Reward XP' })).toHaveAccessibleDescription('Add XP.')
+  const submit = await screen.findByRole('button', { name: 'Submit for safety review' })
+  await userEvent.click(submit)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Complete the Quest fields.')
 })
 
 it('warns before navigating away from unsaved input and can cancel', async () => {
@@ -228,7 +244,7 @@ it('prevents duplicate saves and edits while a save is pending', async () => {
   fireEvent.submit(title.closest('form')!)
   await waitFor(() => expect(patches).toBe(1))
   expect(title).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'Publish quest' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Publish approved quest' })).toBeDisabled()
   finish?.(Response.json({ ...quest, title: 'Saved once' }, { headers: { ETag: '"5"' } }))
   await waitFor(() => expect(title).toBeEnabled())
   expect(title).toHaveValue('Saved once')
