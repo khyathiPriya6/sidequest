@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sidequest.moderation.QuestModerationRepository;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
@@ -29,6 +30,7 @@ import org.springframework.test.context.DynamicPropertySource;
 class QuestLifecycleApiIT {
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
+    @Autowired QuestModerationRepository moderation;
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
@@ -76,6 +78,7 @@ class QuestLifecycleApiIT {
         assertThat(completedDraft.statusCode()).isEqualTo(200);
         String completeEtag = etag(completedDraft);
 
+        approveFixture(owner, id, completeEtag);
         HttpResponse<String> published = action(owner, "publish", id, completeEtag);
         assertThat(published.statusCode()).isEqualTo(200);
         JsonNode publishedBody = json.readTree(published.body());
@@ -128,6 +131,7 @@ class QuestLifecycleApiIT {
                 "rewardXp", 100));
         UUID id = UUID.fromString(json.readTree(created.body()).get("id").asText());
         String etag = etag(created);
+        approveFixture(owner, id, etag);
         String csrf = csrf(owner.client());
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
@@ -160,6 +164,14 @@ class QuestLifecycleApiIT {
 
         JsonNode finalQuest = json.readTree(getQuest(owner, id).body());
         assertThat(finalQuest.get("status").asText()).isIn("PUBLISHED", "ARCHIVED");
+    }
+
+    private void approveFixture(Session owner, UUID id, String etag) throws Exception {
+        var submitted = action(owner, "submit-review", id, etag);
+        assertThat(submitted.statusCode()).isEqualTo(202);
+        var record = moderation.findById(id).orElseThrow();
+        record.approve(java.time.Instant.now());
+        moderation.saveAndFlush(record);
     }
 
     private HttpResponse<String> create(Session session, Object body) throws Exception {
