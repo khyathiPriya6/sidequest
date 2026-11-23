@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Trust & Safety API (M3 draft)
+  version: 0.1.0
+  description: >
+    Proposed API contract. Code lives only on unmerged M3 draft PR #88.
+    Moderator access requires account membership in the privately provisioned moderation_staff
+    table. Cookie authentication and X-CSRF-TOKEN are required for writes.
+servers:
+  - url: /
+paths:
+  /api/v1/me/quests/{id}/moderation:
+    get:
+      summary: Creator-only moderation status
+      security: [{sessionCookie: []}]
+      parameters: [{ $ref: '#/components/parameters/QuestId' }]
+      responses:
+        '200':
+          description: Current moderation state, coarse reason and optimistic version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModerationStatus' }
+        '401': { description: Session required }
+        '404': { description: Quest missing or not owned }
+  /api/v1/quests/{id}/submit-review:
+    post:
+      summary: Submit complete owned draft for safety review
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters:
+        - { $ref: '#/components/parameters/QuestId' }
+        - name: If-Match
+          in: header
+          required: true
+          schema: {type: string}
+      responses:
+        '202':
+          description: Awaiting review, not publicly visible
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModerationStatus' }
+        '409': {description: Invalid state or pending appeal}
+        '412': {description: Stale Quest version}
+  /api/v1/me/quests/{id}/appeals:
+    post:
+      summary: Appeal a rejection of an owned draft
+      description: >
+        Rejected DRAFT Quests only. One appeal per rejected moderation decision,
+        checked by current moderation version. Appeals never automatically restore
+        public access. Editing is unavailable until appeal resolution.
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{ $ref: '#/components/parameters/QuestId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, reason]
+              properties:
+                expectedVersion: {type: integer, format: int64, minimum: 0}
+                reason: {type: string, minLength: 10, maxLength: 1000}
+      responses:
+        '200':
+          description: Appeal created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: {type: string, format: uuid}
+                  status: {type: string, const: PENDING}
+        '400': {description: Invalid explanation or version}
+        '401': {description: Session required}
+        '404': {description: Quest not owned}
+        '409': {description: Stale state, duplicate appeal, or ineligible Quest}
+  /api/v1/quests/{id}/reports:
+    post:
+      summary: Privately report a published, approved Quest
+      description: >
+        One report per reporter/Quest. A repeat returns the previous receipt,
+        including after report resolution. Reports are not automatic removal.
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{ $ref: '#/components/parameters/QuestId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum: [DANGEROUS_ACT, SELF_HARM, ILLEGAL, VIOLENCE_HARASSMENT, HATE,
+                         EXPLOITATION, FRAUD_SPAM, PRIVACY, OTHER]
+      responses:
+        '201': {description: Report accepted for review}
+        '200': {description: Previously submitted report receipt}
+        '404': {description: Quest unavailable or not eligible for reporting}
+        '429': {description: Account quota exceeded}
+  /api/v1/moderation/queue:
+    get:
+      summary: Private staff review queue
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: size, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Pending submission/appeal and outstanding published report queue
+        '403': {description: Not provisioned as moderator}
+  /api/v1/moderation/quests/{id}/decisions:
+    post:
+      summary: Make an auditable moderator decision
+      security: [{sessionCookie: [], csrfHeader: []}]
+      parameters: [{ $ref: '#/components/parameters/QuestId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [action, expectedVersion, reasonCode]
+              properties:
+                action:
+                  type: string
+                  enum: [APPROVE, REJECT, HIDE, DISMISS_REPORTS]
+                expectedVersion: {type: integer, format: int64, minimum: 0}
+                reasonCode: {type: string, maxLength: 40}
+      responses:
+        '200':
+          description: State committed with audit; DISMISS_REPORTS retains APPROVED and resolves outstanding reports
+        '403': {description: Not provisioned as moderator}
+        '409': {description: Invalid or stale review state}
+components:
+  securitySchemes:
+    sessionCookie: {type: apiKey, in: cookie, name: __Host-id}
+    csrfHeader: {type: apiKey, in: header, name: X-CSRF-TOKEN}
+  parameters:
+    QuestId:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  schemas:
+    ModerationStatus:
+      type: object
+      additionalProperties: false
+      required: [state, reasonCode, version]
+      properties:
+        state:
+          type: string
+          enum: [UNREVIEWED, PENDING_REVIEW, APPROVED, REJECTED, UNDER_REVIEW, HIDDEN]
+        reasonCode: {type: [string, 'null']}
+        version: {type: integer, format: int64, minimum: 0}
