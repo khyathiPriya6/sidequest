@@ -212,6 +212,82 @@ class ModerationOperationsIT {
                 Long.class, id)).isEqualTo(1);
     }
 
+    @Test
+    void legacyPublishedQuestIsInvisibleUntilAuditedStaffIntakeAndApproval() throws Exception {
+        Session creator = register();
+        Session staff = register();
+        Session outsider = register();
+        Session participant = register();
+        var created = call(creator, "POST", "/api/v1/quests", json.writeValueAsString(Map.of(
+                "title", "Legacy park walking",
+                "description", "Take a calm walk in a nearby public park.",
+                "category", "FITNESS", "difficulty", "EASY", "rewardXp", 40)), null);
+        assertThat(created.statusCode()).isEqualTo(201);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        // Emulate an old PUBLISHED row created before migrations 008-011.
+        // Test DB only: production migration must never delete/approve existing records.
+        jdbc.update("DELETE FROM quest_moderation WHERE quest_id = ?", id);
+        jdbc.update("UPDATE quests SET status = 'PUBLISHED', published_at = CURRENT_TIMESTAMP WHERE id = ?", id);
+        String intake = "/api/v1/moderation/legacy/" + id + "/intake";
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(404);
+        assertThat(call(participant, "POST", "/api/v1/quests/" + id + "/join", null, null)
+                .statusCode()).isEqualTo(404);
+        assertThat(call(outsider, "GET", "/api/v1/moderation/legacy", null, null).statusCode()).isEqualTo(403);
+        assertThat(call(outsider, "POST", intake, null, null).statusCode()).isEqualTo(403);
+
+        jdbc.update("INSERT INTO moderation_staff (user_id) VALUES (?)", staff.id());
+        var inventory = body(call(staff, "GET", "/api/v1/moderation/legacy", null, null));
+        boolean listed = false;
+        for (JsonNode row : inventory.get("content")) {
+            if (id.toString().equals(row.get("questId").asText())) listed = true;
+        }
+        assertThat(listed).isTrue();
+        var submitted = call(staff, "POST", intake, null, null);
+        assertThat(submitted.statusCode()).isEqualTo(200);
+        assertThat(body(submitted).get("state").asText()).isEqualTo("PENDING_REVIEW");
+        assertThat(call(staff, "POST", intake, null, null).statusCode()).isEqualTo(409);
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(404);
+
+        var decision = call(staff, "POST", "/api/v1/moderation/quests/" + id + "/decisions",
+                json.writeValueAsString(Map.of("action", "APPROVE", "reasonCode", "",
+                        "expectedVersion", body(submitted).get("version").asLong())), null);
+        assertThat(decision.statusCode()).isEqualTo(200);
+        assertThat(body(decision).get("state").asText()).isEqualTo("APPROVED");
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(200);
+        assertThat(call(participant, "POST", "/api/v1/quests/" + id + "/join", null, null)
+                .statusCode()).isEqualTo(201);
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM legacy_moderation_intake WHERE quest_id = ?", Long.class, id)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM moderation_audit WHERE quest_id = ?", Long.class, id)).isEqualTo(2L);
+    }
+
+    @Test
+    void rejectingLegacyPublishedQuestKeepsItHiddenWithoutAffectingExistingData() throws Exception {
+        Session creator = register();
+        Session staff = register();
+        var created = call(creator, "POST", "/api/v1/quests", json.writeValueAsString(Map.of(
+                "title", "Legacy unsafe Quest",
+                "description", "A legacy Quest requiring manual review before public display.",
+                "category", "ADVENTURE", "difficulty", "HARD", "rewardXp", 25)), null);
+        UUID id = UUID.fromString(body(created).get("id").asText());
+        jdbc.update("DELETE FROM quest_moderation WHERE quest_id = ?", id);
+        jdbc.update("UPDATE quests SET status = 'PUBLISHED', published_at = CURRENT_TIMESTAMP WHERE id = ?", id);
+        jdbc.update("INSERT INTO moderation_staff (user_id) VALUES (?)", staff.id());
+        var pending = call(staff, "POST", "/api/v1/moderation/legacy/" + id + "/intake", null, null);
+        assertThat(pending.statusCode()).isEqualTo(200);
+        var hidden = call(staff, "POST", "/api/v1/moderation/quests/" + id + "/decisions",
+                json.writeValueAsString(Map.of("action", "REJECT", "reasonCode", "DANGEROUS_ACT",
+                        "expectedVersion", body(pending).get("version").asLong())), null);
+        assertThat(hidden.statusCode()).isEqualTo(200);
+        assertThat(body(hidden).get("state").asText()).isEqualTo("HIDDEN");
+        assertThat(callAnonymous("GET", "/api/v1/quests/" + id).statusCode()).isEqualTo(404);
+        assertThat(jdbc.queryForObject(
+                "SELECT status FROM quests WHERE id = ?", String.class, id)).isEqualTo("PUBLISHED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM moderation_audit WHERE quest_id = ?", Long.class, id)).isEqualTo(2L);
+    }
+
     private Session register() throws Exception {
         HttpClient client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
         String username = "m" + UUID.randomUUID().toString().replace("-", "").substring(0, 19);
