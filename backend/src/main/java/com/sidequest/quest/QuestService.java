@@ -1,6 +1,11 @@
 package com.sidequest.quest;
 
 import com.sidequest.identity.UserRepository;
+import com.sidequest.moderation.ModerationState;
+import com.sidequest.moderation.QuestModeration;
+import com.sidequest.moderation.QuestModerationRepository;
+import com.sidequest.moderation.QuestSafetyScreen;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.Locale;
 import java.util.UUID;
@@ -14,10 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 class QuestService {
     private final QuestRepository quests;
     private final UserRepository users;
+    private final QuestModerationRepository moderation;
+    private final QuestSafetyScreen safety;
+    private final Clock clock;
 
-    QuestService(QuestRepository quests, UserRepository users) {
+    QuestService(QuestRepository quests, UserRepository users, QuestModerationRepository moderation,
+                 QuestSafetyScreen safety, Clock clock) {
         this.quests = quests;
         this.users = users;
+        this.moderation = moderation;
+        this.safety = safety;
+        this.clock = clock;
     }
 
     @Transactional
@@ -27,6 +39,7 @@ class QuestService {
         Quest quest = Quest.create(creator, values.title(), values.description(),
                 values.category(), values.difficulty(), values.rewardXp());
         quest = quests.saveAndFlush(quest);
+        moderation.save(QuestModeration.unreviewed(quest));
         return versioned(quest);
     }
 
@@ -51,7 +64,7 @@ class QuestService {
 
     @Transactional(readOnly = true)
     VersionedQuest publicQuest(UUID readerId, UUID id) {
-        Quest quest = quests.findByIdAndStatus(id, QuestStatus.PUBLISHED)
+        Quest quest = quests.findApprovedPublished(id)
                 .orElseGet(() -> readerId == null ? null
                         : quests.findByIdAndCreator_Id(id, readerId).orElse(null));
         if (quest == null) throw QuestApiFailure.notFound();
@@ -60,29 +73,61 @@ class QuestService {
 
     @Transactional
     VersionedQuest patch(UUID creatorId, UUID id, String ifMatch, QuestDtos.PatchDraft request) {
-        Quest quest = ownedQuest(creatorId, id);
+        Quest quest = quests.findByIdAndCreatorForUpdate(id, creatorId).orElseThrow(QuestApiFailure::notFound);
         if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
         requireCurrentVersion(ifMatch, quest.getVersion());
         QuestDraftValidator.DraftValues values = QuestDraftValidator.patch(quest, request);
         quest.updateDraft(values.title(), values.description(), values.category(),
                 values.difficulty(), values.rewardXp());
+        moderation.findById(quest.getId()).ifPresent(QuestModeration::invalidateReview);
         quests.flush();
         return versioned(quest);
     }
 
     @Transactional
     VersionedQuest publish(UUID creatorId, UUID id, String ifMatch) {
-        Quest quest = ownedQuest(creatorId, id);
+        Quest quest = quests.findByIdAndCreatorForUpdate(id, creatorId).orElseThrow(QuestApiFailure::notFound);
         long suppliedVersion = parseIfMatch(ifMatch);
         if (quest.getStatus() == QuestStatus.PUBLISHED) return versioned(quest);
         if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
         requireCurrentVersion(suppliedVersion, quest.getVersion());
         var errors = QuestDraftValidator.publicationErrors(quest);
         if (!errors.isEmpty()) throw QuestApiFailure.validation(errors);
+        if (!moderation.findById(id).map(QuestModeration::approved).orElse(false)) {
+            throw QuestApiFailure.reviewRequired();
+        }
         quest.publish();
         quests.flush();
         return versioned(quest);
     }
+
+    /** Submit complete draft to private review. Screening is a triage signal, not approval. */
+    @Transactional
+    ModerationSubmission submitForReview(UUID creatorId, UUID id, String ifMatch) {
+        Quest quest = quests.findByIdAndCreatorForUpdate(id, creatorId).orElseThrow(QuestApiFailure::notFound);
+        long supplied = parseIfMatch(ifMatch);
+        if (quest.getStatus() != QuestStatus.DRAFT) throw QuestApiFailure.conflict();
+        requireCurrentVersion(supplied, quest.getVersion());
+        var errors = QuestDraftValidator.publicationErrors(quest);
+        if (!errors.isEmpty()) throw QuestApiFailure.validation(errors);
+        QuestModeration review = moderation.findById(id).orElseGet(() -> QuestModeration.unreviewed(quest));
+        if (review.getState() != ModerationState.PENDING_REVIEW) {
+            if (review.approved()) throw QuestApiFailure.conflict();
+            review.submit(safety.assess(quest.getTitle(), quest.getDescription()), clock.instant());
+            moderation.saveAndFlush(review);
+        }
+        return new ModerationSubmission(review.getState().name(), review.getReasonCode());
+    }
+
+    @Transactional(readOnly = true)
+    ModerationSubmission reviewStatus(UUID creatorId, UUID id) {
+        ownedQuest(creatorId, id); // Conceal non-owned resources.
+        return moderation.findById(id)
+                .map(m -> new ModerationSubmission(m.getState().name(), m.getReasonCode()))
+                .orElseGet(() -> new ModerationSubmission(ModerationState.UNREVIEWED.name(), null));
+    }
+
+    record ModerationSubmission(String state, String reasonCode) { }
 
     @Transactional
     VersionedQuest archive(UUID creatorId, UUID id, String ifMatch) {
