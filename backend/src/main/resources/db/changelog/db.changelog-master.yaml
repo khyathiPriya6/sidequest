@@ -18,3 +18,5 @@ databaseChangeLog:
       file: db/changelog/007-participation-invariants.sql
   - include:
       file: db/changelog/008-quest-moderation.sql
+  - include:
+      file: db/changelog/009-quest-safety-operations.sql
