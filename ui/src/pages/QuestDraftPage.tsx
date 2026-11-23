@@ -197,6 +197,22 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
     }
   }
 
+  async function refreshReview() {
+    if (mode !== 'edit' || busy.current || dirty || recovery) return
+    busy.current = true
+    setSaving(true)
+    setReviewError('')
+    try {
+      setReview(await getOwnerReview(id))
+    } catch (error) {
+      setReview(null)
+      setReviewError(error instanceof Error ? error.message : 'Unable to verify review status.')
+    } finally {
+      busy.current = false
+      setSaving(false)
+    }
+  }
+
   async function requestReview() {
     if (mode !== 'edit' || busy.current || dirty || !etag || recovery || !review
       || !['UNREVIEWED', 'REJECTED'].includes(review.state)) return
@@ -345,8 +361,13 @@ export function QuestDraftPage({ mode }: { mode: 'create' | 'edit' }) {
           <Button type="button" variant="secondary" loading={saving}
             disabled={dirty || recovery || !etag || saving}
             onClick={() => void requestReview()}>Submit for safety review</Button>}
-        {reviewError && <Button type="button" variant="secondary" onClick={() => setLoadAttempt(value => value + 1)}>
-          Reload review status
+        {review?.state === 'PENDING_REVIEW' && <Button type="button" variant="secondary"
+          disabled={saving || dirty || recovery} onClick={() => void refreshReview()}>
+          Check for review decision
+        </Button>}
+        {reviewError && <Button type="button" variant="secondary"
+          disabled={saving || dirty || recovery} onClick={() => void refreshReview()}>
+          Retry review status
         </Button>}
       </Card>}
       {dirty && mode === 'edit' && <p>Save your changes before submitting for review or publishing.</p>}
