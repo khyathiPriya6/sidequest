@@ -69,7 +69,7 @@ export function ModeratorDashboard() {
         {item.state === 'APPROVED' && item.questStatus === 'PUBLISHED' && <>
           <Button disabled={!!busyId} variant="destructive" onClick={() => setConfirm({ item, action: 'HIDE' })}>Hide quest</Button>
           {item.reports > 0 && <Button disabled={!!busyId} variant="secondary"
-            onClick={() => setConfirm({ item, action: 'DISMISS_REPORTS' })}>Dismiss reports</Button>}
+            onClick={() => { setReason('NO_POLICY_VIOLATION'); setConfirm({ item, action: 'DISMISS_REPORTS' }) }}>Dismiss reports</Button>}
         </>}
       </div>
     </Card>)}
