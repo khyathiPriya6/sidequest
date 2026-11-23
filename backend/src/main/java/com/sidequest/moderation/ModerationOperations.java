@@ -26,7 +26,7 @@ class ModerationOperations {
     record ReportResult(UUID id, boolean created) { }
     record AppealResult(UUID id, String status) { }
     record ReviewItem(UUID questId, String title, String description, String questStatus, ModerationState state,
-                      String reasonCode, long version, long reports) { }
+                      String reasonCode, long version, long reports, String appealReason) { }
     record ReviewPage(List<ReviewItem> content, int page, int size, long totalElements,
                       int totalPages, boolean hasNext, boolean hasPrevious) { }
 
@@ -84,12 +84,13 @@ class ModerationOperations {
         long total = count == null ? 0 : count;
         List<ReviewItem> content = jdbc.query("""
                 SELECT m.quest_id, q.title, q.description, q.status, m.state, m.reason_code, m.version,
-                       (SELECT count(*) FROM quest_reports r WHERE r.quest_id = m.quest_id AND r.resolution = 'OPEN') AS report_count
+                       (SELECT count(*) FROM quest_reports r WHERE r.quest_id = m.quest_id AND r.resolution = 'OPEN') AS report_count,
+                       (SELECT a.reason FROM moderation_appeals a WHERE a.quest_id = m.quest_id AND a.status = 'PENDING') AS appeal_reason
                 """ + predicate + " ORDER BY m.submitted_at NULLS LAST, m.quest_id LIMIT ? OFFSET ?",
                 (rs, row) -> new ReviewItem(
                         rs.getObject("quest_id", UUID.class), rs.getString("title"), rs.getString("description"),
                         rs.getString("status"), ModerationState.valueOf(rs.getString("state")),
-                        rs.getString("reason_code"), rs.getLong("version"), rs.getLong("report_count")),
+                        rs.getString("reason_code"), rs.getLong("version"), rs.getLong("report_count"), rs.getString("appeal_reason")),
                 size, page * size);
         int totalPages = (int) Math.min(Integer.MAX_VALUE, (total + size - 1) / size);
         return new ReviewPage(content, page, size, total, totalPages,
@@ -146,7 +147,8 @@ class ModerationOperations {
                 Timestamp.from(now));
         Long reports = jdbc.queryForObject("SELECT count(*) FROM quest_reports WHERE quest_id = ? AND resolution = 'OPEN'", Long.class, questId);
         return new ReviewItem(questId, quest.getTitle(), quest.getDescription(), quest.getStatus().name(),
-                review.getState(), review.getReasonCode(), review.getVersion(), reports == null ? 0 : reports);
+                review.getState(), review.getReasonCode(), review.getVersion(), reports == null ? 0 : reports,
+                null);
     }
 
     @Transactional
