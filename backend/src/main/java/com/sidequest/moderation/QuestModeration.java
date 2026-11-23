@@ -94,6 +94,7 @@ public class QuestModeration {
         }
         state = ModerationState.UNDER_REVIEW;
         submittedAt = when;
+        reviewedAt = null;
     }
 
     /** Human rejection leaves the Quest private; a creator may edit and resubmit. */
