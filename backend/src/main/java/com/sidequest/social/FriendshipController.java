@@ -21,8 +21,9 @@ public class FriendshipController {
     }
     @GetMapping("/friend-requests")
     ResponseEntity<FriendshipService.Connections> requests(@AuthenticationPrincipal UserPrincipal user,
-            @RequestParam(defaultValue="incoming") String direction) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.requests(user.userId(),direction));
+            @RequestParam(defaultValue="incoming") String direction,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.requests(user.userId(),direction,page,size));
     }
     @PostMapping("/friend-requests/{id}/{action}")
     ResponseEntity<FriendshipService.Connection> decide(@AuthenticationPrincipal UserPrincipal user,
@@ -31,8 +32,9 @@ public class FriendshipController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.decide(user.userId(),id,action,input.expectedVersion()));
     }
     @GetMapping("/friends")
-    ResponseEntity<FriendshipService.Connections> friends(@AuthenticationPrincipal UserPrincipal user) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.friends(user.userId()));
+    ResponseEntity<FriendshipService.Connections> friends(@AuthenticationPrincipal UserPrincipal user,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.friends(user.userId(),page,size));
     }
     record Peer(String username) { }
     @PostMapping("/social/blocks")
