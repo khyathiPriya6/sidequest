@@ -23,3 +23,9 @@ SQL aggregates and window ranks avoid N+1 queries. Count and page share a repeat
 | M4-05 verification | #99 | Pending |
 
 Migrations run only on disposable test clusters during this work. Owner review and approval are required before merge and any persistent database migration.
+
+## Daily streaks
+
+GET `/api/v1/me/streak` is session-only, no-store, and returns `currentStreak`, `longestStreak`, nullable `lastCompletionDate`, and `timezone: UTC`. It accepts no client identity, timestamp or mutation. SQL groups distinct UTC completion dates into consecutive runs, joining the immutable ledger to count committed awards only. No new event table or write path is required. Dates later than the injected server clock are excluded. Yesterday preserves the latest run; earlier last activity yields current zero while retaining longest. Month, leap-day and year boundaries are ordinary consecutive dates.
+
+Streaks describe private historical activity, including archived/hidden history under existing M2/M3 retention rules. They award no XP or rank bonus, and do not change completion or moderation eligibility. No punitive streak loss animation or automatic reminder is added.
