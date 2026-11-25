@@ -70,7 +70,8 @@ class SocialProfileIT extends ParticipationApiSupport {
 
         assertThat(send(owner.client(), "PATCH", SETTINGS,
                 "{\"visibility\":\"PUBLIC\",\"expectedVersion\":0}", null, null).statusCode()).isEqualTo(403);
-        var guest = HttpClient.newHttpClient();
+        var guest = HttpClient.newBuilder()
+                .cookieHandler(new java.net.CookieManager(null, java.net.CookiePolicy.ACCEPT_ALL)).build();
         assertThat(send(guest, "PATCH", SETTINGS,
                 "{\"visibility\":\"PUBLIC\",\"expectedVersion\":0}", csrf(guest), null).statusCode()).isEqualTo(401);
         assertThat(request(owner, "PATCH", SETTINGS, "{\"visibility\":\"BAD\",\"expectedVersion\":0}").statusCode()).isEqualTo(400);
