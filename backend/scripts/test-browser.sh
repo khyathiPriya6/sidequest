@@ -40,5 +40,9 @@ else: raise SystemExit('Isolated API did not become ready; inspect the temporary
 PY
 echo "Browser logs and results: $test_root"
 cd ../ui
-API_ORIGIN="http://127.0.0.1:$api_port" AUTH_E2E=1 PLAYWRIGHT_CHANNEL="${PLAYWRIGHT_CHANNEL:-chrome}" \
-  npm run test:e2e -- --workers=1 --output="$test_root/results" "$@"
+PG_E2E_URL="postgresql://sidequest_test@127.0.0.1:$test_port/sidequest_browser_test" \
+PG_E2E_BIN="$PG_BIN" \
+API_ORIGIN="http://127.0.0.1:$api_port" \
+AUTH_E2E=1 \
+PLAYWRIGHT_CHANNEL="${PLAYWRIGHT_CHANNEL:-chrome}" \
+npm run test:e2e -- --workers=1 --output="$test_root/results" "$@"
