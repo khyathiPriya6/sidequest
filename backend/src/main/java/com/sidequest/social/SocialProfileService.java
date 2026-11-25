@@ -2,7 +2,6 @@ package com.sidequest.social;
 
 import com.sidequest.identity.AccountStatus;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -56,14 +55,16 @@ public class SocialProfileService {
 
     @Transactional(readOnly = true)
     public Profile profile(UUID viewer, UUID publicId) {
-        return jdbc.query("""
+        Profile visible = jdbc.query("""
             SELECT p.public_id, u.username
               FROM social_profile_preferences p
               JOIN users u ON u.id = p.user_id
              WHERE p.public_id = ? AND u.status = 'ACTIVE'
                AND (p.visibility = 'PUBLIC' OR p.user_id = ?)
             """, rs -> rs.next() ? new Profile(rs.getObject(1, UUID.class), rs.getString(2)) : null,
-                publicId, viewer) instanceof Profile p ? p : notFound();
+                publicId, viewer);
+        if (visible == null) throw SocialProfileFailure.notFound();
+        return visible;
         // FRIENDS remains inaccessible to others until M5-03 introduces accepted friendships.
     }
 
@@ -82,9 +83,5 @@ public class SocialProfileService {
             SELECT status FROM users WHERE id = ?
             """, rs -> rs.next() && AccountStatus.ACTIVE.name().equals(rs.getString(1)), owner);
         if (!Boolean.TRUE.equals(active)) throw SocialProfileFailure.notFound();
-    }
-
-    private static Profile notFound() {
-        throw SocialProfileFailure.notFound();
     }
 }
