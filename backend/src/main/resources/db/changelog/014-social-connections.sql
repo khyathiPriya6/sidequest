@@ -1,6 +1,7 @@
 --liquibase formatted sql
 --changeset sidequest:014-social-connections
 CREATE TABLE friend_connections (
+  id UUID NOT NULL UNIQUE,
   user_low_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   user_high_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   requester_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
