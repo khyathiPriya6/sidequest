@@ -73,12 +73,11 @@ public class SocialProfileService {
                          AND NOT EXISTS (SELECT 1 FROM social_blocks b
                            WHERE (b.blocker_id=p.user_id AND b.blocked_id=?)
                               OR (b.blocker_id=? AND b.blocked_id=p.user_id))
-                    ))))
+                    )))))
             """, rs -> rs.next() ? new Profile(rs.getObject(1, UUID.class), rs.getString(2)) : null,
                 publicId, viewer, viewer, viewer, viewer, viewer, viewer, viewer);
         if (visible == null) throw SocialProfileFailure.notFound();
         return visible;
-        // FRIENDS remains inaccessible to others until M5-03 introduces accepted friendships.
     }
 
     private Preferences findSettings(UUID owner) {
