@@ -36,7 +36,7 @@ public class QuestModeration {
     private Instant reviewedAt;
 
     @Version
-    private long version;
+    private Long version;
 
     protected QuestModeration() { }
 
@@ -146,5 +146,5 @@ public class QuestModeration {
     public String getReasonCode() { return reasonCode; }
     public Instant getSubmittedAt() { return submittedAt; }
     public Instant getReviewedAt() { return reviewedAt; }
-    public long getVersion() { return version; }
+    public long getVersion() { return version == null ? 0L : version; }
 }
