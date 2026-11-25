@@ -51,7 +51,8 @@ public class FriendshipController {
     }
     @GetMapping("/friends/leaderboard")
     ResponseEntity<FriendshipService.FriendBoard> board(@AuthenticationPrincipal UserPrincipal user,
-            @RequestParam(defaultValue="all") String period) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.leaderboard(user.userId(),period));
+            @RequestParam(defaultValue="all") String period,
+            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.leaderboard(user.userId(),period,page,size));
     }
 }
