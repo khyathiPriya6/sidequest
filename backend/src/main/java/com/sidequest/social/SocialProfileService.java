@@ -75,7 +75,7 @@ public class SocialProfileService {
                               OR (b.blocker_id=? AND b.blocked_id=p.user_id))
                     ))))
             """, rs -> rs.next() ? new Profile(rs.getObject(1, UUID.class), rs.getString(2)) : null,
-                publicId, viewer, viewer, viewer, viewer, viewer, viewer);
+                publicId, viewer, viewer, viewer, viewer, viewer, viewer, viewer);
         if (visible == null) throw SocialProfileFailure.notFound();
         return visible;
         // FRIENDS remains inaccessible to others until M5-03 introduces accepted friendships.
