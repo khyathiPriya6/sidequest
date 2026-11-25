@@ -24,6 +24,9 @@ public class FriendshipService {
         return new Connections(content,page,size,count,totalPages,
                 (long)page+1<totalPages,page>0);
     }
+    public record BlockedUser(String username) { }
+    public record BlockedPage(List<BlockedUser> content,int page,int size,long totalElements,
+            int totalPages,boolean hasNext,boolean hasPrevious) { }
     public record FriendRank(String username, long rank, long earnedXp) { }
     public record FriendBoard(String period, List<FriendRank> content,int page,int size,long totalElements,
                               int totalPages,boolean hasNext,boolean hasPrevious) { }
@@ -201,6 +204,20 @@ public class FriendshipService {
                 (rs,i)->fromRow(rs,owner),owner,owner,owner,size,(long)page*size);
         return wrap(result,page,size,total);
     }
+
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public BlockedPage blocked(UUID owner,int page,int size) {
+        pagination(page,size);
+        active(owner);
+        long total=jdbc.queryForObject("SELECT count(*) FROM social_blocks WHERE blocker_id=?",Long.class,owner);
+        var rows=jdbc.query("""
+            SELECT u.username FROM social_blocks b JOIN users u ON u.id=b.blocked_id
+            WHERE b.blocker_id=? ORDER BY u.username COLLATE "C" LIMIT ? OFFSET ?
+            """,(rs,i)->new BlockedUser(rs.getString(1)),owner,size,(long)page*size);
+        int totalPages=pages(total,size);
+        return new BlockedPage(rows,page,size,total,totalPages,(long)page+1<totalPages,page>0);
+    }
+
     @Transactional
     public void block(UUID actor,String peerUsername,boolean blocking) {
         active(actor);UUID peer=user(peerUsername);
