@@ -61,6 +61,23 @@ paths:
                       - type: 'null'
         '400': {$ref: '#/components/responses/Invalid'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
+  /me/streak:
+    get:
+      summary: Own daily activity streak from committed completions
+      responses:
+        '200':
+          description: No-store UTC streak; yesterday preserves current, older last activity yields zero
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [currentStreak, longestStreak, lastCompletionDate, timezone]
+                properties:
+                  currentStreak: {type: integer, format: int64, minimum: 0}
+                  longestStreak: {type: integer, format: int64, minimum: 0}
+                  lastCompletionDate: {type: [string, 'null'], format: date}
+                  timezone: {type: string, const: UTC}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
 components:
   securitySchemes:
     session:
