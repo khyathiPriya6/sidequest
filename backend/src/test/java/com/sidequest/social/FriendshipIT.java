@@ -77,6 +77,50 @@ class FriendshipIT extends ParticipationApiSupport {
         assertThat(send(guest,"GET","/api/v1/me/friends",null,null,null).statusCode()).isEqualTo(401);
     }
 
+
+    @Test void friendsBoardUsesEligibleXpAndExcludesStrangers() throws Exception {
+        var creator=register();var alice=register();var bob=register();var outsider=register();
+        var requestFriend=request(alice,"POST","/api/v1/me/friend-requests",jsonBody(name(bob)));
+        assertThat(requestFriend.statusCode()).isEqualTo(200);
+        var id=body(requestFriend).get("id").asText();
+        assertThat(request(bob,"POST","/api/v1/me/friend-requests/"+id+"/accept",
+                "{\\"expectedVersion\\":0}").statusCode()).isEqualTo(200);
+        java.time.Instant at=java.time.Instant.now().minusSeconds(300);
+        for(var player:java.util.List.of(alice,bob,outsider)) {
+            var quest=UUID.randomUUID(); var participation=UUID.randomUUID();
+            jdbc.update("""
+                INSERT INTO quests(id,creator_id,title,description,category,difficulty,reward_xp,status,created_at,updated_at,published_at,version)
+                VALUES(?,?,'Friend score','An approved, safe challenge.','LEARNING','EASY',90,'PUBLISHED',?,?,?,0)
+                """,quest,creator.id(),java.sql.Timestamp.from(at.minusSeconds(60)),
+                java.sql.Timestamp.from(at.minusSeconds(60)),java.sql.Timestamp.from(at.minusSeconds(60)));
+            jdbc.update("INSERT INTO quest_moderation(quest_id,state,policy_version,version) VALUES(?,'APPROVED','v1',0)",quest);
+            jdbc.update("""
+                INSERT INTO participations(id,user_id,quest_id,status,reward_xp,joined_at,completed_at)
+                VALUES(?,?,?,'COMPLETED',90,?,?)
+                """,participation,player.id(),quest,java.sql.Timestamp.from(at.minusSeconds(40)),
+                java.sql.Timestamp.from(at));
+            jdbc.update("INSERT INTO xp_ledger(id,participation_id,amount,awarded_at) VALUES(?,?,90,?)",
+                    UUID.randomUUID(),participation,java.sql.Timestamp.from(at));
+        }
+        var board=request(alice,"GET","/api/v1/me/friends/leaderboard?period=all",null);
+        assertThat(board.statusCode()).isEqualTo(200);
+        assertThat(body(board).get("totalElements").asLong()).isEqualTo(2);
+        assertThat(body(board).get("content").size()).isEqualTo(2);
+        assertThat(board.body()).doesNotContain(name(outsider));
+        for(var row:body(board).get("content")) {
+            assertThat(row.get("rank").asLong()).isEqualTo(1);
+            assertThat(row.get("earnedXp").asLong()).isEqualTo(90);
+        }
+        assertThat(request(alice,"GET","/api/v1/me/friends/leaderboard?period=all&size=1&page=1",null).statusCode()).isEqualTo(200);
+        assertThat(body(request(alice,"GET","/api/v1/me/friends/leaderboard?period=all&size=1&page=1",null))
+                .get("content").size()).isEqualTo(1);
+        for(String path:java.util.List.of("/api/v1/me/friends?size=0",
+                "/api/v1/me/friend-requests?size=101",
+                "/api/v1/me/friends/leaderboard?size=0")) {
+            assertThat(request(alice,"GET",path,null).statusCode()).isEqualTo(400);
+        }
+    }
+
     @Test void cancellationAndRemovalUseVersionedTransitions() throws Exception {
         var alice=register();var bob=register();
         var send=request(alice,"POST","/api/v1/me/friend-requests",jsonBody(name(bob)));
