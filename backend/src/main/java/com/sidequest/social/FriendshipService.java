@@ -25,7 +25,8 @@ public class FriendshipService {
                 (long)page+1<totalPages,page>0);
     }
     public record FriendRank(String username, long rank, long earnedXp) { }
-    public record FriendBoard(String period, List<FriendRank> content) { }
+    public record FriendBoard(String period, List<FriendRank> content,int page,int size,long totalElements,
+                              int totalPages,boolean hasNext,boolean hasPrevious) { }
     private final JdbcTemplate jdbc;
     private final Clock clock;
     public FriendshipService(JdbcTemplate jdbc, Clock clock) { this.jdbc=jdbc; this.clock=clock; }
@@ -158,7 +159,7 @@ public class FriendshipService {
         event(actor,peer,action.toUpperCase(Locale.ROOT));
         return connection(actor,low,high);
     }
-    @Transactional(readOnly=true)
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Connections requests(UUID owner,String direction,int page,int size) {
         if(!List.of("incoming","outgoing").contains(direction)) throw SocialProfileFailure.invalid();
         pagination(page,size);
@@ -181,7 +182,7 @@ public class FriendshipService {
                 (rs,i)->fromRow(rs,owner),owner,owner,owner,owner,incoming,size,(long)page*size);
         return wrap(result,page,size,total);
     }
-    @Transactional(readOnly=true)
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Connections friends(UUID owner,int page,int size) {
         pagination(page,size);
         active(owner);
@@ -218,8 +219,9 @@ public class FriendshipService {
             event(actor,peer,"UNBLOCK");
         }
     }
-    @Transactional(readOnly=true)
-    public FriendBoard leaderboard(UUID owner,String period) {
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public FriendBoard leaderboard(UUID owner,String period,int page,int size) {
+        pagination(page,size);
         active(owner);
         java.time.Instant now=clock.instant();
         java.time.LocalDate day=now.atZone(java.time.ZoneOffset.UTC).toLocalDate();
@@ -229,16 +231,16 @@ public class FriendshipService {
             case "monthly" -> day.withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
             default -> throw SocialProfileFailure.invalid();
         };
-        return new FriendBoard(period,jdbc.query("""
+        String ranked="""
             WITH peers AS (
-                SELECT ?::uuid id
+                SELECT CAST(? AS uuid) AS id
                 UNION
                 SELECT CASE WHEN c.user_low_id=? THEN c.user_high_id ELSE c.user_low_id END
                   FROM friend_connections c
                  WHERE c.state='ACCEPTED' AND (c.user_low_id=? OR c.user_high_id=?)
                    AND NOT EXISTS (SELECT 1 FROM social_blocks b
-                       WHERE (b.blocker_id=c.user_low_id AND b.blocked_id=c.user_high_id)
-                          OR (b.blocker_id=c.user_high_id AND b.blocked_id=c.user_low_id))
+                     WHERE (b.blocker_id=c.user_low_id AND b.blocked_id=c.user_high_id)
+                        OR (b.blocker_id=c.user_high_id AND b.blocked_id=c.user_low_id))
             ), scores AS (
                 SELECT p.user_id,SUM(x.amount::bigint)::bigint earned_xp
                   FROM xp_ledger x JOIN participations p ON p.id=x.participation_id
@@ -251,8 +253,16 @@ public class FriendshipService {
                 SELECT u.username,s.earned_xp,RANK() OVER(ORDER BY s.earned_xp DESC) position
                   FROM scores s JOIN users u ON u.id=s.user_id WHERE u.status='ACTIVE'
             )
-            SELECT username,earned_xp,position FROM ranked ORDER BY earned_xp DESC,username COLLATE "C" LIMIT 100
+            """;
+        Object[] args={owner,owner,owner,owner,Timestamp.from(start),Timestamp.from(now)};
+        long total=jdbc.queryForObject(ranked+"SELECT count(*) FROM ranked",Long.class,args);
+        var rows=jdbc.query(ranked+"""
+            SELECT username,earned_xp,position FROM ranked
+            ORDER BY earned_xp DESC,username COLLATE "C" LIMIT ? OFFSET ?
             """,(rs,i)->new FriendRank(rs.getString(1),rs.getLong(3),rs.getLong(2)),
-            owner,owner,owner,owner,Timestamp.from(start),Timestamp.from(now)));
+            args[0],args[1],args[2],args[3],args[4],args[5],size,(long)page*size);
+        int totalPages=pages(total,size);
+        return new FriendBoard(period,rows,page,size,total,totalPages,
+                (long)page+1<totalPages,page>0);
     }
 }
