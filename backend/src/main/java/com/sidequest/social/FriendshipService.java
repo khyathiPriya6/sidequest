@@ -6,12 +6,24 @@ import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 public class FriendshipService {
     public record Connection(UUID id, UUID profileId, String username, String state, boolean incoming, long version) { }
-    public record Connections(List<Connection> content) { }
+    public record Connections(List<Connection> content,int page,int size,long totalElements,
+            int totalPages,boolean hasNext,boolean hasPrevious) { }
+    private static void pagination(int page,int size) {
+        if(page<0 || size<1 || size>100 || (long)page*size>Integer.MAX_VALUE)
+            throw SocialProfileFailure.invalid();
+    }
+    private static int pages(long count,int size) {
+        return (int)Math.min(Integer.MAX_VALUE,(count+size-1)/size);
+    }
+    private static Connections wrap(List<Connection> content,int page,int size,long count) {
+        int totalPages=pages(count,size);
+        return new Connections(content,page,size,count,totalPages,
+                (long)page+1<totalPages,page>0);
+    }
     public record FriendRank(String username, long rank, long earnedXp) { }
     public record FriendBoard(String period, List<FriendRank> content) { }
     private final JdbcTemplate jdbc;
@@ -138,12 +150,13 @@ public class FriendshipService {
         return connection(actor,low,high);
     }
     @Transactional(readOnly=true)
-    public Connections requests(UUID owner,String direction) {
+    public Connections requests(UUID owner,String direction,int page,int size) {
         if(!List.of("incoming","outgoing").contains(direction)) throw SocialProfileFailure.invalid();
+        pagination(page,size);
         active(owner);
         boolean incoming="incoming".equals(direction);
-        return new Connections(jdbc.query("""
-            SELECT c.*,u.username,p.public_id FROM friend_connections c
+        String where="""
+            FROM friend_connections c
             JOIN users u ON u.id=CASE WHEN c.user_low_id=? THEN c.user_high_id ELSE c.user_low_id END
             JOIN social_profile_preferences p ON p.user_id=u.id
             WHERE c.state='PENDING' AND (c.user_low_id=? OR c.user_high_id=?)
@@ -152,22 +165,31 @@ public class FriendshipService {
               AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE
                 (b.blocker_id=c.user_low_id AND b.blocked_id=c.user_high_id)
                 OR (b.blocker_id=c.user_high_id AND b.blocked_id=c.user_low_id))
-            ORDER BY c.requested_at DESC,c.id LIMIT 100
-            """,(rs,i)->fromRow(rs,owner),owner,owner,owner,owner,incoming));
+            """;
+        long total=jdbc.queryForObject("SELECT count(*) "+where,Long.class,owner,owner,owner,owner,incoming);
+        var result=jdbc.query("SELECT c.*,u.username,p.public_id "+where+
+                " ORDER BY c.requested_at DESC,c.id LIMIT ? OFFSET ?",
+                (rs,i)->fromRow(rs,owner),owner,owner,owner,owner,incoming,size,(long)page*size);
+        return wrap(result,page,size,total);
     }
     @Transactional(readOnly=true)
-    public Connections friends(UUID owner) {
+    public Connections friends(UUID owner,int page,int size) {
+        pagination(page,size);
         active(owner);
-        return new Connections(jdbc.query("""
-            SELECT c.*,u.username,p.public_id FROM friend_connections c
+        String where="""
+            FROM friend_connections c
             JOIN users u ON u.id=CASE WHEN c.user_low_id=? THEN c.user_high_id ELSE c.user_low_id END
             JOIN social_profile_preferences p ON p.user_id=u.id
             WHERE c.state='ACCEPTED' AND (c.user_low_id=? OR c.user_high_id=?) AND u.status='ACTIVE'
               AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE
                 (b.blocker_id=c.user_low_id AND b.blocked_id=c.user_high_id)
                 OR (b.blocker_id=c.user_high_id AND b.blocked_id=c.user_low_id))
-            ORDER BY u.username COLLATE "C", c.id LIMIT 100
-            """,(rs,i)->fromRow(rs,owner),owner,owner,owner));
+            """;
+        long total=jdbc.queryForObject("SELECT count(*) "+where,Long.class,owner,owner,owner);
+        var result=jdbc.query("SELECT c.*,u.username,p.public_id "+where+
+                " ORDER BY u.username COLLATE \"C\",c.id LIMIT ? OFFSET ?",
+                (rs,i)->fromRow(rs,owner),owner,owner,owner,size,(long)page*size);
+        return wrap(result,page,size,total);
     }
     @Transactional
     public void block(UUID actor,String peerUsername,boolean blocking) {
