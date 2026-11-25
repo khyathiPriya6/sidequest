@@ -32,7 +32,7 @@
   .workspace { margin-left: 0; }
   .mobileBrand { display: block; }
   .member { padding-bottom: calc(7rem + env(safe-area-inset-bottom)); }
-  .mobileNavigation { position: fixed; bottom: 0; left: 0; right: 0; z-index: var(--layer-nav); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); padding: var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border); background: var(--color-surface); }
+  .mobileNavigation { position: fixed; bottom: 0; left: 0; right: 0; z-index: var(--layer-nav); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-1); padding: var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--color-border); background: var(--color-surface); }
   .mobileNavigation .navLink { flex-direction: column; justify-content: center; gap: var(--space-1); padding: var(--space-2) var(--space-1); font-size: var(--text-xs); }
 }
 @media (max-width: 35rem) {

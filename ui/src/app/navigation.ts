@@ -1,9 +1,10 @@
-import { BookOpen, Compass, PlusCircle, UserRound } from 'lucide-react'
+import { BookOpen, Compass, PlusCircle, Trophy, UserRound } from 'lucide-react'
 
 export const navigation = [
   { to: '/quests', label: 'Explore', icon: Compass, memberOnly: false },
   { to: '/my-quests', label: 'My quests', icon: BookOpen, memberOnly: true },
   { to: '/quests/new', label: 'Create', icon: PlusCircle, memberOnly: true },
+  { to: '/leaderboard', label: 'Leaderboard', icon: Trophy, memberOnly: true },
   { to: '/profile', label: 'Profile', icon: UserRound, memberOnly: true },
 ] as const
 

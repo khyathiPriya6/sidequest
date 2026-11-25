@@ -78,3 +78,9 @@ XP balance and level can be recalculated from the ledger, so copying them into m
 1. Why cast `amount` to bigint before summing XP?
 2. What consistency cost does a persisted achievement unlock table add?
 3. How can two awards at the same timestamp still produce a deterministic unlock time?
+
+## M4 additive achievements (#98)
+
+The nine IDs above remain unchanged. M4 reuses `first_adventure`, `quest_explorer`, `quest_veteran` and `xp_rookie` for the requested 1/5/10 Quest and 500 XP milestones; it does not duplicate or rename them. The catalogue appends `consistent_player` (Consistent Player, 3 consecutive UTC active days) and `week_warrior` (Week Warrior, 7 days). Progress uses longest historical streak clamped to target. Unlock time is the first completion instant on day 3/7 of the first qualifying run, never the read time. Multiple completions per date count once. Future-dated events are excluded by the server clock.
+
+All eleven entries are derived once per stable ID; no unlock write, extra XP, claim endpoint or mutable award table. Repeatable-read profile/achievement transactions include streak history. Existing private history is retained after archive/hide per M2/M3; badges describe past activity and are not a safety endorsement or permission to complete hidden content. No new reward or bypass is added to the completion path.

@@ -6,8 +6,8 @@ export function Navigation({ mode, mobile = false }: { mode: NavigationMode; mob
   return <nav aria-label={mobile ? 'Mobile navigation' : 'Main navigation'} className={mobile ? styles.mobileNavigation : styles.navigation}>
     {navigation.filter(item => mode !== 'guest' || !item.memberOnly).map(item => {
       const Icon = item.icon
-      return <NavLink key={item.to} to={item.to} end className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}>
-        <Icon size={20} aria-hidden="true" /><span>{item.label}</span>
+      return <NavLink key={item.to} to={item.to} aria-label={item.label} end className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}>
+        <Icon size={20} aria-hidden="true" /><span>{mobile && item.to === '/leaderboard' ? 'Ranks' : item.label}</span>
       </NavLink>
     })}
   </nav>
