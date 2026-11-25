@@ -103,6 +103,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/api/v1/health", "/api/v1/auth/csrf", "/api/v1/quests", "/api/v1/quests/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/leaderboard", "/api/v1/me/leaderboard-rank").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/v1/me/social/settings", "/api/v1/social/profiles/*").authenticated()
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/me/social/settings").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/moderation/queue", "/api/v1/moderation/legacy").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/moderation/quests/*/decisions", "/api/v1/moderation/legacy/*/intake", "/api/v1/quests/*/reports", "/api/v1/me/quests/*/appeals").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/me", "/api/v1/me/quests", "/api/v1/me/quests/*", "/api/v1/me/quests/*/moderation", "/api/v1/me/participations", "/api/v1/me/participations/*", "/api/v1/me/profile", "/api/v1/me/achievements", "/api/v1/me/xp-transactions").authenticated()

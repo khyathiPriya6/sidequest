@@ -26,3 +26,6 @@ databaseChangeLog:
       file: db/changelog/011-legacy-moderation-intake.sql
   - include:
       file: db/changelog/012-gamification-indexes.sql
+
+  - include:
+      file: db/changelog/013-social-profile-preferences.sql
