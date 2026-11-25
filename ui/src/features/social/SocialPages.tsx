@@ -5,13 +5,16 @@ import { Button } from '../../components/ui/Button/Button'
 import { ApiError } from '../../lib/api'
 import { block, decide, getFriendsBoard, getPublicProfile, getSettings, invite, listFriends, listRequests,
   setVisibility, type Connection, type FriendBoard, type Period, type Settings, type Visibility,
-  type PublicProfile } from './socialApi'
+  type PublicProfile, type Page } from './socialApi'
 
 export function FriendsPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [incoming, setIncoming] = useState<Connection[]>([])
-  const [outgoing, setOutgoing] = useState<Connection[]>([])
-  const [friends, setFriends] = useState<Connection[]>([])
+  const [incoming, setIncoming] = useState<Page<Connection> | null>(null)
+  const [incomingPage,setIncomingPage] = useState(0)
+  const [outgoing, setOutgoing] = useState<Page<Connection> | null>(null)
+  const [outgoingPage,setOutgoingPage] = useState(0)
+  const [friends, setFriends] = useState<Page<Connection> | null>(null)
+  const [friendsPage,setFriendsPage] = useState(0)
   const [username, setUsername] = useState('')
   const [busy, setBusy] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -22,16 +25,16 @@ export function FriendsPage() {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    void Promise.all([getSettings(controller.signal), listRequests('incoming', controller.signal),
-      listRequests('outgoing', controller.signal), listFriends(controller.signal)])
+    void Promise.all([getSettings(controller.signal), listRequests('incoming', incomingPage, controller.signal),
+      listRequests('outgoing', outgoingPage, controller.signal), listFriends(friendsPage, controller.signal)])
       .then(([s, i, o, f]) => {
         if (controller.signal.aborted) return
-        setSettings(s); setIncoming(i.content); setOutgoing(o.content); setFriends(f.content)
+        setSettings(s); setIncoming(i); setOutgoing(o); setFriends(f)
         setError('')
       }).catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Could not load friends.') })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [revision])
+  }, [revision,incomingPage,outgoingPage,friendsPage])
 
   async function action(run: () => Promise<unknown>, message: string) {
     if (busy) return
@@ -79,26 +82,36 @@ export function FriendsPage() {
     </Card>
     <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Incoming requests</h2>
-      {!incoming.length && <p>No incoming requests.</p>}
-      {incoming.map(c => <div key={c.id}>
+      {incoming && !incoming.content.length && <p>No incoming requests.</p>}
+      {incoming?.content.map(c => <div key={c.id}>
         <strong>{c.username}</strong>{' '}
         <Button disabled={busy} onClick={() => void action(() => decide(c.id,'accept',c.version),'Friend request accepted.')}>Accept</Button>{' '}
         <Button variant="secondary" disabled={busy} onClick={() => void action(() => decide(c.id,'reject',c.version),'Request declined.')}>Reject</Button>
       </div>)}
+      {incoming && incoming.totalPages > 1 && <nav aria-label="Incoming request pages">
+        <Button variant="secondary" disabled={!incoming.hasPrevious || busy} onClick={() => setIncomingPage(n => n - 1)}>Previous</Button>
+        <span> Page {incoming.page + 1} of {incoming.totalPages} </span>
+        <Button variant="secondary" disabled={!incoming.hasNext || busy} onClick={() => setIncomingPage(n => n + 1)}>Next</Button>
+      </nav>}
     </Card>
     <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Outgoing requests</h2>
-      {!outgoing.length && <p>No pending invitations.</p>}
-      {outgoing.map(c => <div key={c.id}><span>{c.username}</span>{' '}
+      {outgoing && !outgoing.content.length && <p>No pending invitations.</p>}
+      {outgoing?.content.map(c => <div key={c.id}><span>{c.username}</span>{' '}
         <Button variant="secondary" disabled={busy} onClick={() => void action(() => decide(c.id,'cancel',c.version),'Request cancelled.')}>Cancel</Button></div>)}
     </Card>
     <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Your friends</h2>
-      {!friends.length && <p>No friends yet. Invite someone using their exact username.</p>}
-      {friends.map(c => <div key={c.id}>
+      {friends && !friends.content.length && <p>No friends yet. Invite someone using their exact username.</p>}
+      {friends?.content.map(c => <div key={c.id}>
         <Link to={`/players/${c.profileId}`}>{c.username}</Link>{' '}
         <Button variant="secondary" disabled={busy} onClick={() => void action(() => decide(c.id,'remove',c.version),'Friend removed.')}>Remove</Button>
       </div>)}
+      {friends && friends.totalPages > 1 && <nav aria-label="Friend list pages">
+        <Button variant="secondary" disabled={!friends.hasPrevious || busy} onClick={() => setFriendsPage(n => n - 1)}>Previous</Button>
+        <span> Page {friends.page + 1} of {friends.totalPages} </span>
+        <Button variant="secondary" disabled={!friends.hasNext || busy} onClick={() => setFriendsPage(n => n + 1)}>Next</Button>
+      </nav>}
     </Card>
     <Link to="/friends/leaderboard">View friends leaderboard</Link>
   </section>
@@ -106,22 +119,23 @@ export function FriendsPage() {
 
 export function FriendLeaderboardPage() {
   const [period,setPeriod] = useState<Period>('all')
+  const [page,setPage] = useState(0)
   const [board,setBoard] = useState<FriendBoard | null>(null)
   const [error,setError] = useState('')
   const [retry,setRetry] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
     setBoard(null);setError('')
-    void getFriendsBoard(period,controller.signal)
+    void getFriendsBoard(period,page,controller.signal)
       .then(b => { if(!controller.signal.aborted) setBoard(b) })
       .catch(e => { if(!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Could not load leaderboard.') })
     return () => controller.abort()
-  },[period,retry])
+  },[period,page,retry])
   return <section style={{display:'grid',gap:'var(--space-4)'}}>
     <h1>Friends leaderboard</h1>
     <p>Ranks include your eligible XP and accepted friends only. Archived but approved Quests can count.</p>
     <label htmlFor="friends-period">Ranking period</label>
-    <select id="friends-period" value={period} onChange={e => setPeriod(e.target.value as Period)}>
+    <select id="friends-period" value={period} onChange={e => {setPage(0);setPeriod(e.target.value as Period)}}>
       <option value="all">All time</option><option value="weekly">This week (UTC)</option>
       <option value="monthly">This month (UTC)</option>
     </select>
@@ -131,6 +145,11 @@ export function FriendLeaderboardPage() {
       {board.content.length === 0 ? <p>No eligible XP yet.</p> : <ol>
         {board.content.map(x => <li key={x.username}>Rank {x.rank}: {x.username} · {x.earnedXp} XP</li>)}
       </ol>}
+      {board.totalPages>1 && <nav aria-label="Friends leaderboard pages">
+        <Button variant="secondary" disabled={!board.hasPrevious} onClick={() => setPage(n => n - 1)}>Previous</Button>
+        <span> Page {board.page+1} of {board.totalPages} </span>
+        <Button variant="secondary" disabled={!board.hasNext} onClick={() => setPage(n => n + 1)}>Next</Button>
+      </nav>}
     </Card>}
     <Link to="/friends">Back to friends</Link>
   </section>
