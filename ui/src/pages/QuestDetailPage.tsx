@@ -80,6 +80,7 @@ function QuestDetail({ quest, participation, onChanged }: {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [shareNotice, setShareNotice] = useState('')
   const isCreator = auth.status === 'authenticated' && auth.user.id === quest.creatorId
 
   async function act(action: 'join' | 'complete') {
@@ -123,6 +124,14 @@ function QuestDetail({ quest, participation, onChanged }: {
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
     </Card>
+    {quest.status === 'PUBLISHED' && <div>
+      <Button variant="secondary" onClick={() => {
+        const url = new URL(`/quests/${quest.id}`, window.location.origin).toString()
+        void navigator.clipboard.writeText(url).then(() => setShareNotice('Quest link copied.'))
+          .catch(() => setShareNotice(`Copy this link: ${url}`))
+      }}>Share this quest</Button>
+      {shareNotice && <p role="status">{shareNotice}</p>}
+    </div>}
     <Card className={styles.description}>
       <p className={styles.eyebrow}>The quest</p>
       <h2>Description</h2>
