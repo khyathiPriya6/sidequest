@@ -44,7 +44,7 @@ class PlayerProfileIT extends ParticipationApiSupport {
         assertThat(profile.get("createdQuests").asLong()).isZero();
         assertThat(profile.get("unlockedAchievementCount").asLong()).isZero();
         var catalog=body(request(player,"GET","/api/v1/me/achievements",null));
-        assertThat(catalog.get("achievements")).hasSize(9);
+        assertThat(catalog.get("achievements")).hasSize(11);
         assertThat(catalog.get("achievements")).allSatisfy(a->{assertThat(a.get("unlocked").asBoolean()).isFalse();assertThat(a.get("unlockedAt").isNull()).isTrue();});
         assertThat(body(request(player,"GET","/api/v1/me/xp-transactions",null)).get("totalElements").asLong()).isZero();
     }
@@ -64,9 +64,9 @@ class PlayerProfileIT extends ParticipationApiSupport {
         assertThat(profile.get("activeQuests").asLong()).isZero();
         assertThat(profile.get("joinedQuests").asLong()).isEqualTo(25);
         assertThat(profile.get("createdQuests").asLong()).isZero();
-        assertThat(profile.get("unlockedAchievementCount").asLong()).isEqualTo(9);
+        assertThat(profile.get("unlockedAchievementCount").asLong()).isEqualTo(11);
         var catalog=body(request(player,"GET","/api/v1/me/achievements",null)).get("achievements");
-        assertThat(catalog).hasSize(9);
+        assertThat(catalog).hasSize(11);
         assertThat(catalog).allSatisfy(a->{assertThat(a.get("unlocked").asBoolean()).isTrue();assertThat(a.get("unlockedAt").asText()).endsWith("Z");});
         assertThat(catalog.get(0).get("unlockedAt").asText()).isEqualTo("2026-01-01T00:00:01Z");
         assertThat(catalog.get(1).get("unlockedAt").asText()).isEqualTo("2026-01-05T00:00:01Z");
