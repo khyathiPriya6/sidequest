@@ -45,7 +45,11 @@ class QuestModerationPersistenceIT {
                 "Sketch flowers from a safe public viewpoint.", null, null, null));
         assertThat(moderation.findById(quest.getId())).isEmpty();
 
-        moderation.saveAndFlush(QuestModeration.unreviewed(quest));
+        // A new @MapsId moderation record has a non-null assigned Quest ID.
+        // Nullable @Version must cause Spring Data save() to INSERT, not MERGE.
+        QuestModeration newReview = QuestModeration.unreviewed(quest);
+        assertThat(newReview.getVersion()).isZero();
+        moderation.saveAndFlush(newReview);
         entityManager.clear();
 
         var record = moderation.findById(quest.getId()).orElseThrow();
