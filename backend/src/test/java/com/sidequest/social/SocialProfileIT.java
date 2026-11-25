@@ -3,7 +3,6 @@ package com.sidequest.social;
 import static org.assertj.core.api.Assertions.*;
 import com.sidequest.participation.ParticipationApiSupport;
 import java.net.http.HttpClient;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
