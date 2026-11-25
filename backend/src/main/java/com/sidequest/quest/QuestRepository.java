@@ -1,6 +1,7 @@
 package com.sidequest.quest;
 
 import java.util.UUID;
+import com.sidequest.moderation.QuestModeration;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 import java.util.Optional;
@@ -23,6 +24,14 @@ public interface QuestRepository extends JpaRepository<Quest, UUID>, QuestReposi
     Optional<Quest> findByIdAndCreator_Id(UUID id, UUID creatorId);
 
     Optional<Quest> findByIdAndStatus(UUID id, QuestStatus status);
+
+    @Query("""
+        select q from Quest q where q.id = :id and q.status = :status
+        and exists (select m.questId from QuestModeration m
+                    where m.questId = q.id and m.state = :approved)
+        """)
+    Optional<Quest> findApprovedPublished(@Param("id") UUID id, @Param("status") QuestStatus status,
+                                         @Param("approved") com.sidequest.moderation.ModerationState approved);
 
     Page<Quest> findAllByCreator_Id(UUID creatorId, Pageable pageable);
 

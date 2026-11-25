@@ -32,6 +32,12 @@ final class QuestApiFailure extends RuntimeException {
                 "The quest cannot be changed in its current state.", List.of(), null);
     }
 
+    static QuestApiFailure reviewRequired() {
+        return new QuestApiFailure(HttpStatus.CONFLICT, "moderation_not_approved",
+                "Submit this Quest for safety review and await approval before publishing.",
+                List.of(), null);
+    }
+
     static QuestApiFailure validation(List<FieldError> errors) {
         return new QuestApiFailure(HttpStatus.UNPROCESSABLE_ENTITY, "validation_failed",
                 "Correct the invalid quest fields.", List.copyOf(errors), null);

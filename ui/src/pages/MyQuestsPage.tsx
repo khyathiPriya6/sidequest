@@ -10,7 +10,6 @@ import {
   archiveQuest,
   getMyQuests,
   getOwnedQuest,
-  publishQuest,
   QuestApiError,
   displayEnum,
   type Quest,
@@ -18,6 +17,7 @@ import {
   type QuestStatus,
 } from '../features/quests/questApi'
 import styles from './MyQuestsPage.module.css'
+import { ParticipationListPage } from './ParticipationListPage'
 
 type LoadState =
   | { kind: 'loading' }
@@ -32,6 +32,28 @@ const statuses: Array<{ value: ''; label: string } | { value: QuestStatus; label
 ]
 
 export function MyQuestsPage() {
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab')
+  function select(next: string) {
+    const updated = new URLSearchParams()
+    if (next) updated.set('tab', next)
+    setParams(updated)
+  }
+  return <div className={styles.page}>
+    <nav className={styles.tabs} aria-label="My quest sections">
+      {[
+        { value: 'in-progress', label: 'In Progress' },
+        { value: 'completed', label: 'Completed' },
+        { value: '', label: 'My Creations' },
+      ].map(item => <button key={item.value} type="button" aria-current={(tab || '') === item.value ? 'page' : undefined}
+        className={(tab || '') === item.value ? styles.active : ''} onClick={() => select(item.value)}>{item.label}</button>)}
+    </nav>
+    {tab === 'in-progress' ? <ParticipationListPage status="IN_PROGRESS" />
+      : tab === 'completed' ? <ParticipationListPage status="COMPLETED" /> : <OwnedQuestsPage />}
+  </div>
+}
+
+function OwnedQuestsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawStatus = searchParams.get('status')
   const status: QuestStatus | '' = rawStatus === 'DRAFT' || rawStatus === 'PUBLISHED' || rawStatus === 'ARCHIVED'
@@ -121,21 +143,20 @@ function OwnedQuestCard({ quest, onChanged }: { quest: Quest; onChanged: () => v
   const [actionError, setActionError] = useState('')
   const statusTone = quest.status === 'PUBLISHED' ? 'success' : quest.status === 'ARCHIVED' ? 'neutral' : 'accent'
 
-  async function mutate(action: 'publish' | 'archive') {
+  async function mutate() {
     if (mutating) return
     setMutating(true)
     setActionError('')
     try {
       const owned = await getOwnedQuest(quest.id, new AbortController().signal)
       const csrfToken = (await getCsrfToken()).csrfToken
-      if (action === 'publish') await publishQuest(quest.id, owned.etag, csrfToken)
-      else await archiveQuest(quest.id, owned.etag, csrfToken)
+      await archiveQuest(quest.id, owned.etag, csrfToken)
       setArchiveOpen(false)
       onChanged()
     } catch (error) {
       if (error instanceof QuestApiError) {
         setActionError(error.status === 422
-          ? 'Complete the publication fields before publishing.'
+          ? 'Complete the required quest fields.'
           : error.status === 412
             ? 'This quest changed in another tab or session. Reload before retrying.'
             : error.status === 409
@@ -167,7 +188,10 @@ function OwnedQuestCard({ quest, onChanged }: { quest: Quest; onChanged: () => v
       <p>{quest.description || 'No description available.'}</p>
       {quest.rewardXp !== null && <Badge tone="reward">{quest.rewardXp} XP reward</Badge>}
       {quest.status !== 'ARCHIVED' && <div className={styles.actions}>
-        {quest.status === 'DRAFT' && <Button size="small" loading={mutating} onClick={() => void mutate('publish')}>Publish</Button>}
+        {quest.status === 'DRAFT' &&
+          <Link className={styles.reviewLink} to={`/quests/${encodeURIComponent(quest.id)}/edit`}>
+            Review / publish
+          </Link>}
         <Button size="small" variant="destructive" onClick={() => setArchiveOpen(true)}>Archive</Button>
       </div>}
       {actionError && <p className={styles.actionError} role="alert">{actionError}</p>}
@@ -175,7 +199,7 @@ function OwnedQuestCard({ quest, onChanged }: { quest: Quest; onChanged: () => v
         description="The quest will leave public discovery. You can keep its draft or publication history in My quests.">
         <div className={styles.modalActions}>
           <Button variant="secondary" onClick={() => setArchiveOpen(false)}>Cancel</Button>
-          <Button variant="destructive" loading={mutating} onClick={() => void mutate('archive')}>Confirm archive</Button>
+          <Button variant="destructive" loading={mutating} onClick={() => void mutate()}>Confirm archive</Button>
         </div>
       </Modal>
     </Card>

@@ -170,6 +170,7 @@ it('renders an archived quest returned for its authenticated owner', async () =>
     if (path.endsWith('/csrf')) return Response.json({ csrfToken: 'token' })
     if (path.endsWith('/auth/me')) return Response.json({ id: '00000000-0000-4000-8000-000000000001', email: 'owner@example.test', username: 'owner' })
     if (path.endsWith('/quests/quest-123')) return Response.json(archived, { headers: { ETag: '"3"' } })
+    if (path.includes('/me/participations?')) return Response.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, hasNext: false, hasPrevious: false })
     return Response.json({ status: 'UP' })
   }))
   renderAt('/quests/quest-123')

@@ -1,8 +1,9 @@
 import { Navigate, useLocation, useParams, type RouteObject } from 'react-router-dom'
 import { AppShell } from './layouts/AppShell'
 import { ExploreShell } from '../pages/ExploreShell'
-import { QuestDetailPage } from '../pages/QuestDetailPage'
-import { FeaturePlaceholder } from '../pages/FeaturePlaceholder'
+import { QuestDetailPage, ParticipationDetailPage } from '../pages/QuestDetailPage'
+import { PlayerProfilePage } from '../features/progress/PlayerProfilePage'
+import { ModeratorDashboard } from '../features/safety/ModeratorDashboard'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { AuthPage } from '../features/auth/AuthPage'
 import { RequireAuth } from '../features/auth/RequireAuth'
@@ -38,7 +39,9 @@ export function createAppRoutes(): RouteObject[] {
             { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <QuestDraftPage mode="edit" /> },
             { path: '/my/quests/:id/edit', element: <LegacyQuestDashboardEditRedirect /> },
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
-            { path: '/profile', handle: { title: 'Your profile' }, element: <FeaturePlaceholder title="Your profile" description="Your profile and earned progress will be available after sign-in is ready." /> },
+            { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
+            { path: '/profile', handle: { title: 'Your profile' }, element: <PlayerProfilePage /> },
+            { path: '/participations/:id', handle: { title: 'Participation details' }, element: <ParticipationDetailPage /> },
           ],
         },
         { path: '*', element: <NotFoundPage />, handle: { title: 'Page not found' } },

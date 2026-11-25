@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sidequest.moderation.QuestModerationRepository;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URI;
@@ -31,6 +32,7 @@ class QuestPublicApiIT {
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
     @Autowired QuestRepository quests;
+    @Autowired QuestModerationRepository moderation;
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
@@ -45,6 +47,7 @@ class QuestPublicApiIT {
 
     @BeforeEach
     void clearQuestFixtures() {
+        moderation.deleteAllInBatch();
         quests.deleteAllInBatch();
     }
 
@@ -141,9 +144,17 @@ class QuestPublicApiIT {
                 "rewardXp", 100)), null);
         assertThat(created.statusCode()).isEqualTo(201);
         UUID id = UUID.fromString(json.readTree(created.body()).get("id").asText());
+        approveFixture(owner, id, etag(created));
         HttpResponse<String> published = action(owner, "publish", id, etag(created));
         assertThat(published.statusCode()).isEqualTo(200);
         return id;
+    }
+
+    private void approveFixture(Session owner, UUID id, String etag) throws Exception {
+        assertThat(action(owner, "submit-review", id, etag).statusCode()).isEqualTo(202);
+        var review = moderation.findById(id).orElseThrow();
+        review.approve(java.time.Instant.now());
+        moderation.saveAndFlush(review);
     }
 
     private UUID createDraft(Session owner, String title) throws Exception {

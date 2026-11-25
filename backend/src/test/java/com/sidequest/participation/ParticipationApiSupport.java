@@ -3,6 +3,7 @@ package com.sidequest.participation;
 import static org.assertj.core.api.Assertions.*;
 import com.fasterxml.jackson.databind.*;
 import com.sidequest.quest.*;
+import com.sidequest.moderation.QuestModerationRepository;
 import jakarta.persistence.EntityManager;
 import java.net.*;
 import java.net.http.*;
@@ -26,6 +27,7 @@ public abstract class ParticipationApiSupport {
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected ParticipationService service;
     @Autowired protected QuestRepository quests;
+    @Autowired protected QuestModerationRepository moderation;
     @Autowired protected ParticipationRepository participations;
     @Autowired protected EntityManager em;
     @Autowired protected PlatformTransactionManager transactions;
@@ -61,6 +63,11 @@ public abstract class ParticipationApiSupport {
         UUID id = UUID.fromString(body(created).get("id").asText());
         String etag = created.headers().firstValue("etag").orElseThrow();
         if (publish) {
+            var submitted = send(creator.client, "POST", "/api/v1/quests/" + id + "/submit-review", null, creator.csrf, etag);
+            assertThat(submitted.statusCode()).isEqualTo(202);
+            var review = moderation.findById(id).orElseThrow();
+            review.approve(java.time.Instant.now());
+            moderation.saveAndFlush(review);
             var published = send(creator.client, "POST", "/api/v1/quests/" + id + "/publish", null, creator.csrf, etag);
             assertThat(published.statusCode()).isEqualTo(200);
             etag = published.headers().firstValue("etag").orElseThrow();

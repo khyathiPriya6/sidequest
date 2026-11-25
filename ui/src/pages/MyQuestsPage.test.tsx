@@ -136,19 +136,19 @@ it('shows empty and error states and retries service failures', async () => {
   expect(await screen.findByRole('heading', { name: 'Draft walk' })).toBeVisible()
 })
 
-it('publishes a draft and confirms or cancels archive actions', async () => {
+it('routes drafts through the safety review editor and confirms or cancels archive actions', async () => {
   const user = userEvent.setup()
   renderAt('/my-quests')
   await screen.findByRole('heading', { name: 'Draft walk' })
-  await user.click(screen.getByRole('button', { name: 'Publish' }))
-  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Draft walk' })).not.toBeInTheDocument())
-
+  expect(screen.getByRole('link', { name: 'Review / publish' })).toHaveAttribute('href', '/quests/draft-1/edit')
+  expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument()
   await screen.findByRole('heading', { name: 'Published walk' })
-  await user.click(screen.getByRole('button', { name: 'Archive' }))
+  const publishedCard = screen.getByRole('article', { name: 'Published walk' })
+  await user.click(within(publishedCard).getByRole('button', { name: 'Archive' }))
   const dialog = await screen.findByRole('dialog', { name: 'Archive this quest?' })
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
   expect(screen.queryByRole('dialog', { name: 'Archive this quest?' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Archive' }))
+  await user.click(within(publishedCard).getByRole('button', { name: 'Archive' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Archive this quest?' })).getByRole('button', { name: 'Confirm archive' }))
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'Published walk' })).not.toBeInTheDocument())
 })
