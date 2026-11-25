@@ -17,6 +17,7 @@ import {
   type QuestStatus,
 } from '../features/quests/questApi'
 import styles from './MyQuestsPage.module.css'
+import { ParticipationListPage } from './ParticipationListPage'
 
 type LoadState =
   | { kind: 'loading' }
@@ -31,6 +32,28 @@ const statuses: Array<{ value: ''; label: string } | { value: QuestStatus; label
 ]
 
 export function MyQuestsPage() {
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab')
+  function select(next: string) {
+    const updated = new URLSearchParams()
+    if (next) updated.set('tab', next)
+    setParams(updated)
+  }
+  return <div className={styles.page}>
+    <nav className={styles.tabs} aria-label="My quest sections">
+      {[
+        { value: 'in-progress', label: 'In Progress' },
+        { value: 'completed', label: 'Completed' },
+        { value: '', label: 'My Creations' },
+      ].map(item => <button key={item.value} type="button" aria-current={(tab || '') === item.value ? 'page' : undefined}
+        className={(tab || '') === item.value ? styles.active : ''} onClick={() => select(item.value)}>{item.label}</button>)}
+    </nav>
+    {tab === 'in-progress' ? <ParticipationListPage status="IN_PROGRESS" />
+      : tab === 'completed' ? <ParticipationListPage status="COMPLETED" /> : <OwnedQuestsPage />}
+  </div>
+}
+
+function OwnedQuestsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawStatus = searchParams.get('status')
   const status: QuestStatus | '' = rawStatus === 'DRAFT' || rawStatus === 'PUBLISHED' || rawStatus === 'ARCHIVED'

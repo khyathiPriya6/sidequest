@@ -16,7 +16,7 @@ The root redirects to `/quests`, a public catalogue with URL-backed search, filt
 
 The shared request boundary sends same-origin cookies, handles Problem Details and notifies authentication state about expired sessions. CSRF rejection verifies session status without replaying writes. Draft editing requires a real strong ETag; uncertain mutations require explicit recovery. Unsaved changes block publication and prompt before navigation or sign-out. Title is required even for drafts; validation counts Unicode code points.
 
-The footer retains the retryable health check. `/dev/components` is a development-only presentation gallery. Profile, joining, completion, XP awards and achievements are outside this implementation.
+The footer retains the retryable health check. `/dev/components` is a development-only presentation gallery. E04-09 adds session-authenticated quest joining and completion, private archived participation details (`/participations/:id`), In Progress/Completed sections in `/my-quests`, and ledger-backed `/profile` views. Completion is self-reported, permanent, and rewarded once by the backend; after an uncertain mutation, reload server state instead of replaying automatically. The E04-09 implementation requires PR review and test verification before acceptance.
 
 ## Check the integration
 
