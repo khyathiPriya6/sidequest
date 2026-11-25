@@ -57,6 +57,13 @@ public class FriendshipService {
         jdbc.update("INSERT INTO friend_request_events(id,actor_id,peer_id,action,created_at) VALUES(?,?,?,?,?)",
                 UUID.randomUUID(),actor,peer,action,Timestamp.from(clock.instant()));
     }
+    private void lock(String key,int namespace) {
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(CAST(? AS text), ?))",
+                rs -> null, key, namespace);
+    }
+    private static String pairKey(UUID a,UUID b) {
+        return (a.compareTo(b)<0?a:b).toString()+"|"+(a.compareTo(b)<0?b:a);
+    }
     private void rate(UUID user) {
         Long recent=jdbc.queryForObject("""
             SELECT count(*) FROM friend_request_events
@@ -74,6 +81,8 @@ public class FriendshipService {
         active(actor);
         UUID peer=user(peerUsername);
         if(actor.equals(peer)) throw SocialProfileFailure.invalid();
+        lock(actor.toString(),437); // serialize send-count budget across distinct peers
+        lock(pairKey(actor,peer),438); // serialize opposite requests and block
         notBlocked(actor,peer);
         UUID low=actor.compareTo(peer)<0?actor:peer,high=actor.compareTo(peer)<0?peer:actor;
         // The unordered primary key stops concurrent A->B and B->A duplicate rows.
@@ -195,6 +204,7 @@ public class FriendshipService {
     public void block(UUID actor,String peerUsername,boolean blocking) {
         active(actor);UUID peer=user(peerUsername);
         if(actor.equals(peer)) throw SocialProfileFailure.invalid();
+        lock(pairKey(actor,peer),438);
         if(blocking) {
             jdbc.update("INSERT INTO social_blocks(blocker_id,blocked_id) VALUES(?,?) ON CONFLICT DO NOTHING",actor,peer);
             jdbc.update("""
