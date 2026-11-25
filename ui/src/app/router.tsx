@@ -2,6 +2,7 @@ import { Navigate, useLocation, useParams, type RouteObject } from 'react-router
 import { AppShell } from './layouts/AppShell'
 import { ExploreShell } from '../pages/ExploreShell'
 import { QuestDetailPage, ParticipationDetailPage } from '../pages/QuestDetailPage'
+import { LeaderboardPage } from '../features/progress/LeaderboardPage'
 import { PlayerProfilePage } from '../features/progress/PlayerProfilePage'
 import { ModeratorDashboard } from '../features/safety/ModeratorDashboard'
 import { NotFoundPage } from '../pages/NotFoundPage'
@@ -40,6 +41,7 @@ export function createAppRoutes(): RouteObject[] {
             { path: '/my/quests/:id/edit', element: <LegacyQuestDashboardEditRedirect /> },
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
             { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
+            { path: '/leaderboard', handle: { title: 'Leaderboard' }, element: <LeaderboardPage /> },
             { path: '/profile', handle: { title: 'Your profile' }, element: <PlayerProfilePage /> },
             { path: '/participations/:id', handle: { title: 'Participation details' }, element: <ParticipationDetailPage /> },
           ],

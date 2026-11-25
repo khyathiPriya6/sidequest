@@ -9,7 +9,7 @@ const participation = {
 const empty = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, hasNext: false, hasPrevious: false }
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     if (url.endsWith('/auth/csrf')) return Response.json({ csrfToken: 'csrf-test' })
     if (url.includes('/me/participations?')) return Response.json({ ...empty, content: [participation], totalElements: 1, totalPages: 1 })

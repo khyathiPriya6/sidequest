@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { GamificationSummary } from './GamificationSummary'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button/Button'
 import { Card } from '../../components/ui/Card/Card'
@@ -25,6 +26,7 @@ export function PlayerProfilePage() {
   }, [page, attempt])
   return <section aria-labelledby="profile-title" style={{ display: 'grid', gap: 'var(--space-6)' }}>
     <h1 id="profile-title">Your profile</h1>
+    <GamificationSummary />
     {state.kind === 'loading' && <Card role="status">Loading your progress…</Card>}
     {state.kind === 'error' && <Card role="alert"><p>{state.message}</p>
       <Button variant="secondary" onClick={() => setAttempt(n => n + 1)}>Try again</Button></Card>}
@@ -41,9 +43,9 @@ export function PlayerProfilePage() {
       {state.achievements.length === 0 && <Card>No achievements available yet.</Card>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))', gap: 'var(--space-4)' }}>
         {state.achievements.map(a => <Card key={a.id}>
-          <h3>{a.name} {a.unlocked ? '✓' : '🔒'}</h3>
+          <h3>{a.name}</h3>
           <p>{a.description}</p>
-          <p>{a.progress} / {a.target}</p>
+          <p>{a.unlocked ? 'Unlocked' : 'Locked'} · {a.progress} / {a.target}</p>
           {a.unlockedAt && <small>Unlocked {new Date(a.unlockedAt).toLocaleDateString()}</small>}
         </Card>)}
       </div>
