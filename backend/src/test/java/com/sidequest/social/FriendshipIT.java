@@ -84,7 +84,7 @@ class FriendshipIT extends ParticipationApiSupport {
         assertThat(requestFriend.statusCode()).isEqualTo(200);
         var id=body(requestFriend).get("id").asText();
         assertThat(request(bob,"POST","/api/v1/me/friend-requests/"+id+"/accept",
-                "{\\"expectedVersion\\":0}").statusCode()).isEqualTo(200);
+                "{\"expectedVersion\":0}").statusCode()).isEqualTo(200);
         java.time.Instant at=java.time.Instant.now().minusSeconds(300);
         for(var player:java.util.List.of(alice,bob,outsider)) {
             var quest=UUID.randomUUID(); var participation=UUID.randomUUID();
