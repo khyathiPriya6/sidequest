@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: SideQuest Gamification
+  version: 1.0.0
+servers:
+  - url: /api/v1
+security:
+  - session: []
+paths:
+  /leaderboard:
+    get:
+      summary: Authenticated rankings of eligible ledger XP
+      description: UTC Monday weeks and calendar months. Ties share competition rank; username orders ties. Zero eligible XP is unranked. Excludes disabled players and rewards from unapproved or openly reported Quests.
+      parameters:
+        - $ref: '#/components/parameters/Period'
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+        - name: size
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: No-store page; page times size must not exceed 2147483647
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [period, content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+                properties:
+                  period: {$ref: '#/components/schemas/Period'}
+                  content:
+                    type: array
+                    items: {$ref: '#/components/schemas/Entry'}
+                  page: {type: integer}
+                  size: {type: integer}
+                  totalElements: {type: integer, format: int64}
+                  totalPages: {type: integer}
+                  hasNext: {type: boolean}
+                  hasPrevious: {type: boolean}
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+  /me/leaderboard-rank:
+    get:
+      summary: Current session player's rank, or null when unranked
+      parameters:
+        - $ref: '#/components/parameters/Period'
+      responses:
+        '200':
+          description: No-store own rank
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [period, player]
+                properties:
+                  period: {$ref: '#/components/schemas/Period'}
+                  player:
+                    oneOf:
+                      - $ref: '#/components/schemas/Entry'
+                      - type: 'null'
+        '400': {$ref: '#/components/responses/Invalid'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-sidequest-session
+      description: Existing opaque session; local profile uses its configured development cookie.
+  parameters:
+    Period:
+      name: period
+      in: query
+      schema: {$ref: '#/components/schemas/Period'}
+  schemas:
+    Period: {type: string, enum: [all, weekly, monthly], default: all}
+    Entry:
+      type: object
+      additionalProperties: false
+      required: [username, rank, earnedXp]
+      properties:
+        username: {type: string}
+        rank: {type: integer, format: int64, minimum: 1}
+        earnedXp: {type: integer, format: int64, minimum: 1}
+    Problem:
+      type: object
+      properties:
+        status: {type: integer}
+        detail: {type: string}
+        code: {type: string}
+  responses:
+    Invalid:
+      description: Invalid period or pagination, RFC 9457
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthenticated:
+      description: Missing or expired session, RFC 9457
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}

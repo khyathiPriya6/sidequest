@@ -8,7 +8,7 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes = {ParticipationController.class, PlayerProfileController.class})
+@RestControllerAdvice(assignableTypes = {ParticipationController.class, PlayerProfileController.class, GamificationController.class})
 class ParticipationApiErrors {
     @ExceptionHandler(ParticipationFailure.class)
     ResponseEntity<ProblemDetail> failure(ParticipationFailure error, HttpServletRequest request) {
