@@ -43,7 +43,7 @@ paths:
       description: Stable catalogue order. Progress and unlockedAt derive from immutable history. Unlocked achievements add no XP. Cache-Control no-store.
       responses:
         '200':
-          description: Achievement catalogue
+          description: Eleven stable derived achievements, including 3-day and 7-day UTC streak milestones; no bonus XP
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AchievementCatalog'}
@@ -97,7 +97,7 @@ components:
         activeQuests: {type: integer, format: int64}
         completedQuests: {type: integer, format: int64}
         createdQuests: {type: integer, format: int64}
-        unlockedAchievementCount: {type: integer, format: int64, minimum: 0, maximum: 9}
+        unlockedAchievementCount: {type: integer, format: int64, minimum: 0, maximum: 11}
     Achievement:
       type: object
       required: [id, name, description, progress, target, unlocked, unlockedAt]

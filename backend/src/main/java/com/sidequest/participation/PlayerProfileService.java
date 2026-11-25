@@ -12,20 +12,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlayerProfileService {
     private final ProgressionReadRepository progression;
     private final com.sidequest.reward.XpLedgerRepository ledger;
-    public PlayerProfileService(ProgressionReadRepository progression, XpLedgerRepository ledger) {
-        this.progression=progression; this.ledger=ledger;
+    private final StreakService streaks;
+    public PlayerProfileService(ProgressionReadRepository progression, XpLedgerRepository ledger, StreakService streaks) {
+        this.progression=progression; this.ledger=ledger; this.streaks=streaks;
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public ProgressionDtos.Profile profile(UUID userId) {
         var summary=progression.summary(userId);
-        var achievements=AchievementCatalog.build(summary,progression.events(userId));
+        var achievements=AchievementCatalog.build(summary,progression.events(userId),streaks.history(userId));
         long unlocked=achievements.stream().filter(ProgressionDtos.Achievement::unlocked).count();
         return ProgressionDtos.profile(summary,unlocked);
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public ProgressionDtos.AchievementCatalog achievements(UUID userId) {
         var summary=progression.summary(userId);
-        return new ProgressionDtos.AchievementCatalog(AchievementCatalog.build(summary,progression.events(userId)));
+        return new ProgressionDtos.AchievementCatalog(AchievementCatalog.build(summary,progression.events(userId),streaks.history(userId)));
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public ProgressionDtos.XpPage transactions(UUID userId,int page,int size) {

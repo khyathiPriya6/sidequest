@@ -2,6 +2,7 @@ package com.sidequest.participation;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.ArrayList;
 
 final class AchievementCatalog {
     private AchievementCatalog() { }
@@ -18,6 +19,15 @@ final class AchievementCatalog {
             item("quest_master","Quest Master","Earn 5000 XP.",s.totalXp(),5000,e.xp5000()),
             item("all_rounder","All-Rounder","Complete a Quest in each of the six categories.",s.categories(),6,e.allCategories()),
             item("challenge_seeker","Challenge Seeker","Complete 5 HARD Quests.",s.hard(),5,e.fifthHard()));
+    }
+    static List<ProgressionDtos.Achievement> build(ProgressionReadRepository.Summary s,
+            ProgressionReadRepository.Events e, StreakService.History history) {
+        var entries = new ArrayList<>(build(s, e));
+        entries.add(item("consistent_player", "Consistent Player", "Be active on 3 consecutive UTC days. Take breaks when needed.",
+                history.streak().longestStreak(), 3, history.firstThreeDays()));
+        entries.add(item("week_warrior", "Week Warrior", "Be active on 7 consecutive UTC days. One Quest a day is enough.",
+                history.streak().longestStreak(), 7, history.firstSevenDays()));
+        return List.copyOf(entries);
     }
     private static ProgressionDtos.Achievement item(String id,String name,String description,long progress,long target,Instant unlockedAt) {
         long bounded=Math.min(progress,target);
