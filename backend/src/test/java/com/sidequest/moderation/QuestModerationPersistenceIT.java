@@ -45,8 +45,9 @@ class QuestModerationPersistenceIT {
                 "Sketch flowers from a safe public viewpoint.", null, null, null));
         assertThat(moderation.findById(quest.getId())).isEmpty();
 
-        // A new @MapsId moderation record has a non-null assigned Quest ID.
-        // Nullable @Version must cause Spring Data save() to INSERT, not MERGE.
+        // Moderation uses the existing Quest UUID as a scalar primary/foreign key.
+        // No @MapsId identifier derivation or extra Quest insert is involved.
+        // Nullable @Version makes Spring Data persist a new record rather than merge.
         QuestModeration newReview = QuestModeration.unreviewed(quest);
         assertThat(newReview.getVersion()).isZero();
         moderation.saveAndFlush(newReview);
