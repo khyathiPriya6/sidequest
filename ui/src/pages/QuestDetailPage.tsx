@@ -127,6 +127,10 @@ function QuestDetail({ quest, participation, onChanged }: {
     {quest.status === 'PUBLISHED' && <div>
       <Button variant="secondary" onClick={() => {
         const url = new URL(`/quests/${quest.id}`, window.location.origin).toString()
+        if (!navigator.clipboard?.writeText) {
+          setShareNotice(`Copy this link: ${url}`)
+          return
+        }
         void navigator.clipboard.writeText(url).then(() => setShareNotice('Quest link copied.'))
           .catch(() => setShareNotice(`Copy this link: ${url}`))
       }}>Share this quest</Button>
