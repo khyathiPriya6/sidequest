@@ -14,11 +14,6 @@ public class QuestModeration {
     @Column(name = "quest_id", nullable = false)
     private UUID questId;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId
-    @JoinColumn(name = "quest_id", nullable = false, updatable = false)
-    private Quest quest;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
     private ModerationState state;
@@ -42,8 +37,8 @@ public class QuestModeration {
 
     public static QuestModeration unreviewed(Quest quest) {
         QuestModeration record = new QuestModeration();
-        record.quest = Objects.requireNonNull(quest);
-        record.questId = quest.getId();
+        record.questId = Objects.requireNonNull(quest, "quest is required").getId();
+        if (record.questId == null) throw new IllegalArgumentException("Quest must have an ID");
         record.state = ModerationState.UNREVIEWED;
         record.policyVersion = "m3-v1";
         return record;
