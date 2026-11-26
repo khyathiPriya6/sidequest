@@ -66,7 +66,7 @@ public class FriendshipService {
                 rs -> null, key, namespace);
     }
     private static String pairKey(UUID a,UUID b) {
-        return (a.compareTo(b)<0?a:b).toString()+"|"+(a.compareTo(b)<0?b:a);
+        return (a.toString().compareTo(b.toString())<0?a:b).toString()+"|"+(a.toString().compareTo(b.toString())<0?b:a);
     }
     private void rate(UUID user) {
         Long recent=jdbc.queryForObject("""
@@ -88,7 +88,7 @@ public class FriendshipService {
         lock(actor.toString(),437); // serialize send-count budget across distinct peers
         lock(pairKey(actor,peer),438); // serialize opposite requests and block
         notBlocked(actor,peer);
-        UUID low=actor.compareTo(peer)<0?actor:peer,high=actor.compareTo(peer)<0?peer:actor;
+        UUID low=actor.toString().compareTo(peer.toString())<0?actor:peer,high=actor.toString().compareTo(peer.toString())<0?peer:actor;
         // The unordered primary key stops concurrent A->B and B->A duplicate rows.
         // Never automatically accept an opposite request.
         List<Map<String,Object>> existing=jdbc.queryForList("""
