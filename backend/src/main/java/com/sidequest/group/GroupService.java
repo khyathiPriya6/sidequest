@@ -198,6 +198,24 @@ public class GroupService {
             user,size,(long)number*size);
         return paged(rows,number,size,total);
     }
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    public Page<Invite> teamInvites(UUID team,UUID actor,int number,int size) {
+        page(number,size);owner(team,actor,false);
+        String where="""
+            FROM team_invitations i JOIN teams t ON t.id=i.team_id
+            JOIN users u ON u.id=i.invited_user_id JOIN users s ON s.id=i.sender_id
+            WHERE i.team_id=? AND i.status='PENDING'
+            """;
+        long total=jdbc.queryForObject("SELECT count(*) "+where,Long.class,team);
+        List<Invite> rows=jdbc.query("""
+            SELECT i.id,i.team_id,t.name,s.username,u.username,i.status,i.version
+            """+where+" ORDER BY i.created_at DESC,i.id LIMIT ? OFFSET ?",
+            (rs,n)->new Invite(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),
+                rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),rs.getLong(7)),
+            team,size,(long)number*size);
+        return paged(rows,number,size,total);
+    }
+
     @Transactional
     public Invite decide(UUID actor,UUID invitation,String action,long expected) {
         if(expected<0||!List.of("accept","reject","cancel").contains(action))throw GroupFailure.bad();
