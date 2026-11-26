@@ -98,6 +98,14 @@ test.describe('M5 multi-user social acceptance @auth-real', () => {
       await bob.goto('/friends')
       await expect(bob.getByRole('heading', { name: 'Your friends' }).locator('..').getByText(aliceName)).toHaveCount(0)
 
+      // Unblocking is not a silent friendship restore: the old pair remains removed.
+      const unblock = await csrfPost(page, '/api/v1/me/social/unblocks', { username: bobName })
+      expect(unblock.status).toBe(204)
+      await bob.goto('/friends')
+      await expect(bob.getByRole('heading', { name: 'Your friends' }).locator('..').getByText(aliceName)).toHaveCount(0)
+      await bob.goto(aliceLink!)
+      await expect(bob.getByText('This profile is private or unavailable.')).toBeVisible()
+
       // Owner privacy can also be revoked independently of relationship state.
       await page.getByLabel('Who can see your social profile?').selectOption('PRIVATE')
       await expect(page.getByLabel('Who can see your social profile?')).toHaveValue('PRIVATE')
