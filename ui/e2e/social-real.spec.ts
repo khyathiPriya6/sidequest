@@ -59,7 +59,12 @@ test.describe('M5 multi-user social acceptance @auth-real', () => {
 
       await bob.goto('/friends')
       await bob.getByLabel('Username').fill(aliceName)
+      const sendResponse = bob.waitForResponse(response =>
+        new URL(response.url()).pathname === '/api/v1/me/friend-requests'
+        && response.request().method() === 'POST')
       await bob.getByRole('button', { name: 'Send request' }).click()
+      const sent = await sendResponse
+      expect(sent.status(), `Friend request failed: ${await sent.text()}`).toBe(200)
       await expect(bob.getByText('Request sent.')).toBeVisible()
       await expect(bob.getByRole('heading', { name: 'Outgoing requests' }).locator('..').getByText(aliceName)).toBeVisible()
 
@@ -167,7 +172,8 @@ test.describe('M5 multi-user social acceptance @auth-real', () => {
 
       await moderator.goto('/moderation')
       await expect(moderator.getByRole('heading', { name: title })).toBeVisible()
-      await moderator.getByRole('button', { name: 'Approve', exact: true }).click()
+      const reviewCard = moderator.getByRole('heading', { name: title }).locator('..')
+      await reviewCard.getByRole('button', { name: 'Approve', exact: true }).click()
       const decision = moderator.waitForResponse(r =>
         new URL(r.url()).pathname === `/api/v1/moderation/quests/${questId}/decisions`
         && r.request().method() === 'POST')
