@@ -278,7 +278,8 @@ public class GroupService {
     }
     @Transactional
     public void remove(UUID team,UUID actor,UUID target) {
-        teamLock(team);owner(team,actor,false);
+        if(!"ACTIVE".equals(teamLock(team)))throw GroupFailure.missing();
+        owner(team,actor,true);
         ownerCheckNotSelf(team,target);
         int changed=jdbc.update("""
             UPDATE team_members SET state='REMOVED',version=version+1
@@ -325,8 +326,12 @@ public class GroupService {
         return challengeRow(id);
     }
     private static final String CHALLENGE_PROGRESS = """
-        SELECT c.id,c.quest_id,q.title,c.target_completions,c.created_at,c.ends_at,
-          CASE WHEN q.status='PUBLISHED' AND mod.state='APPROVED'
+        SELECT c.id,c.quest_id,
+          CASE WHEN q.status IN ('PUBLISHED','ARCHIVED') AND mod.state='APPROVED'
+               AND NOT EXISTS (SELECT 1 FROM quest_reports r WHERE r.quest_id=q.id AND r.resolution='OPEN')
+               THEN q.title ELSE 'Quest unavailable' END AS title,
+          c.target_completions,c.created_at,c.ends_at,
+          CASE WHEN q.status IN ('PUBLISHED','ARCHIVED') AND mod.state='APPROVED'
              AND NOT EXISTS(SELECT 1 FROM quest_reports rep WHERE rep.quest_id=q.id AND rep.resolution='OPEN')
           THEN (SELECT count(*) FROM team_members m JOIN participations p ON p.user_id=m.user_id
                  JOIN xp_ledger x ON x.participation_id=p.id
@@ -335,7 +340,7 @@ public class GroupService {
                   AND p.quest_id=c.quest_id AND p.status='COMPLETED'
                   AND x.awarded_at>=c.created_at AND x.awarded_at<=c.ends_at)
           ELSE 0 END AS completed,
-          CASE WHEN q.status='PUBLISHED' AND mod.state='APPROVED'
+          CASE WHEN q.status IN ('PUBLISHED','ARCHIVED') AND mod.state='APPROVED'
              AND NOT EXISTS(SELECT 1 FROM quest_reports rep WHERE rep.quest_id=q.id AND rep.resolution='OPEN')
           THEN COALESCE((SELECT sum(x.amount) FROM team_members m JOIN participations p ON p.user_id=m.user_id
                  JOIN xp_ledger x ON x.participation_id=p.id JOIN users u ON u.id=m.user_id
@@ -376,11 +381,11 @@ public class GroupService {
               SELECT m.user_id,u.username,
                 COALESCE(SUM(x.amount) FILTER (WHERE p.status='COMPLETED'
                     AND x.awarded_at>=c.created_at AND x.awarded_at<=c.ends_at
-                    AND q.status='PUBLISHED' AND mod.state='APPROVED'
+                    AND q.status IN ('PUBLISHED','ARCHIVED') AND mod.state='APPROVED'
                     AND NOT EXISTS(SELECT 1 FROM quest_reports r WHERE r.quest_id=q.id AND r.resolution='OPEN')),0) AS xp,
                 COUNT(DISTINCT p.id) FILTER (WHERE p.status='COMPLETED'
                     AND x.awarded_at>=c.created_at AND x.awarded_at<=c.ends_at
-                    AND q.status='PUBLISHED' AND mod.state='APPROVED'
+                    AND q.status IN ('PUBLISHED','ARCHIVED') AND mod.state='APPROVED'
                     AND NOT EXISTS(SELECT 1 FROM quest_reports r WHERE r.quest_id=q.id AND r.resolution='OPEN')) AS completed
               FROM team_members m JOIN users u ON u.id=m.user_id
               LEFT JOIN team_challenges c ON c.team_id=m.team_id
