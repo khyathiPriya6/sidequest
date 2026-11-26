@@ -99,6 +99,11 @@ export function FriendsPage() {
       {outgoing && !outgoing.content.length && <p>No pending invitations.</p>}
       {outgoing?.content.map(c => <div key={c.id}><span>{c.username}</span>{' '}
         <Button variant="secondary" disabled={busy} onClick={() => void action(() => decide(c.id,'cancel',c.version),'Request cancelled.')}>Cancel</Button></div>)}
+      {outgoing && outgoing.totalPages > 1 && <nav aria-label="Outgoing request pages">
+        <Button variant="secondary" disabled={!outgoing.hasPrevious || busy} onClick={() => setOutgoingPage(n => n - 1)}>Previous</Button>
+        <span> Page {outgoing.page + 1} of {outgoing.totalPages} </span>
+        <Button variant="secondary" disabled={!outgoing.hasNext || busy} onClick={() => setOutgoingPage(n => n + 1)}>Next</Button>
+      </nav>}
     </Card>
     <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Your friends</h2>
