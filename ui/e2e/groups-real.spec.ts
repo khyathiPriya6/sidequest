@@ -36,8 +36,12 @@ test.describe('M6 private group journey @auth-real', () => {
       expect(strangerApi.status()).toBe(404)
 
       await page.getByLabel('Exact username').fill(playerName)
+      const deniedInvite = page.waitForResponse(response =>
+        new URL(response.url()).pathname === '/api/v1'+teamUrl+'/invitations'
+        && response.request().method() === 'POST')
       await page.getByRole('button',{name:'Invite friend'}).click()
-      await expect(page.getByRole('alert')).toBeVisible()
+      const deniedResponse = await deniedInvite
+      expect(deniedResponse.status(), await deniedResponse.text()).toBe(404)
 
       // Establish accepted friendship through real session-backed UI, not a DB shortcut.
       await page.goto('/friends')
