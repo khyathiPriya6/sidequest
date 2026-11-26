@@ -108,7 +108,7 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.POST, "/api/v1/me/friend-requests", "/api/v1/me/friend-requests/*/*", "/api/v1/me/social/blocks", "/api/v1/me/social/unblocks").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/me/social/settings").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/me/teams", "/api/v1/me/team-invitations",
-                    "/api/v1/teams/*", "/api/v1/teams/*/members",
+                    "/api/v1/teams/*", "/api/v1/teams/*/members", "/api/v1/teams/*/invitations",
                     "/api/v1/teams/*/challenges", "/api/v1/teams/*/leaderboard").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/teams", "/api/v1/teams/*/invitations",
                     "/api/v1/me/team-invitations/*/*", "/api/v1/teams/*/leave",
