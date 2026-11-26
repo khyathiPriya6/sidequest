@@ -156,16 +156,17 @@ public class GroupService {
             SELECT count(*) FROM team_members WHERE team_id=? AND user_id=? AND state='ACTIVE'
             """,Integer.class,team,target);
         if(already!=null&&already>0)throw GroupFailure.conflict();
+        List<Map<String,Object>> prior=jdbc.queryForList("""
+            SELECT id,status,updated_at FROM team_invitations WHERE team_id=? AND invited_user_id=? FOR UPDATE
+            """,team,target);
+        if(!prior.isEmpty()&&"PENDING".equals(prior.getFirst().get("status")))
+            return inviteRow((UUID)prior.getFirst().get("id"));
         Integer recent=jdbc.queryForObject("""
             SELECT count(*) FROM team_invitations WHERE sender_id=? AND created_at>=?
             """,Integer.class,owner,Timestamp.from(clock.instant().minus(1,ChronoUnit.DAYS)));
         if(recent!=null&&recent>=10)throw GroupFailure.limited();
-        List<Map<String,Object>> prior=jdbc.queryForList("""
-            SELECT id,status,updated_at FROM team_invitations WHERE team_id=? AND invited_user_id=? FOR UPDATE
-            """,team,target);
         if(!prior.isEmpty()){
             Map<String,Object> row=prior.getFirst();
-            if("PENDING".equals(row.get("status")))return inviteRow((UUID)row.get("id"));
             Timestamp previous=(Timestamp)row.get("updated_at");
             if(previous.toInstant().isAfter(clock.instant().minus(1,ChronoUnit.HOURS)))throw GroupFailure.limited();
             jdbc.update("""
