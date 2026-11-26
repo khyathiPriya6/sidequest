@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 
 /** Real isolated browser/API/PostgreSQL only; never run against a developer database. */
