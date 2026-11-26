@@ -116,6 +116,40 @@ class GroupJourneyIT extends ParticipationApiSupport {
         assertThat(call(owner,"POST",url+"/challenges",json.writeValueAsString(Map.of(
                 "questId",published.id(),"days",7,"targetCompletions",2))).statusCode()).isEqualTo(409);
     }
+
+    @Test
+    void concurrentAcceptOfSameInvitationCannotDuplicateMembership() throws Exception {
+        var owner=register();var player=register();
+        becomeFriends(owner,player);
+        UUID team=createTeam(owner);
+        var sent=call(owner,"POST","/api/v1/teams/"+team+"/invitations",
+                jsonBody("username",username(player)));
+        UUID invitation=UUID.fromString(body(sent).get("id").asText());
+        var ready=new java.util.concurrent.CountDownLatch(2);
+        var start=new java.util.concurrent.CountDownLatch(1);
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Callable<Integer> accept=()->{
+                ready.countDown();
+                assertThat(start.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                return call(player,"POST","/api/v1/me/team-invitations/"+invitation+"/accept",
+                        jsonBody("expectedVersion",0)).statusCode();
+            };
+            var first=pool.submit(accept);
+            var second=pool.submit(accept);
+            assertThat(ready.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(java.util.List.of(first.get(15,java.util.concurrent.TimeUnit.SECONDS),
+                    second.get(15,java.util.concurrent.TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(200,404);
+            assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM team_members WHERE team_id=? AND user_id=? AND state='ACTIVE'
+                """,Long.class,team,player.id())).isEqualTo(1);
+        } finally {
+            start.countDown();pool.shutdownNow();
+        }
+    }
+
     @Test
     void guestCsrfAndPageValidationAreRejected() throws Exception {
         var owner=register();UUID team=createTeam(owner);
