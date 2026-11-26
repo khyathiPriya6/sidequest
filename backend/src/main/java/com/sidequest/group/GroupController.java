@@ -47,6 +47,12 @@ public class GroupController {
         if(request==null)throw GroupFailure.bad();
         return ok(service.invite(id,user.userId(),request.username()));
     }
+    @GetMapping("/teams/{id}/invitations")
+    ResponseEntity<GroupService.Page<GroupService.Invite>> teamInvitations(@AuthenticationPrincipal UserPrincipal user,
+            @PathVariable UUID id,@RequestParam(defaultValue="0") int page,
+            @RequestParam(defaultValue="20") int size) {
+        return ok(service.teamInvites(id,user.userId(),page,size));
+    }
     @GetMapping("/me/team-invitations")
     ResponseEntity<GroupService.Page<GroupService.Invite>> invitations(@AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
