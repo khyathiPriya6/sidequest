@@ -185,7 +185,16 @@ test.describe('M5 multi-user social acceptance @auth-real', () => {
         return (await review.json()).state
       }).toBe('APPROVED')
       await page.reload()
+      const publishedResponse = page.waitForResponse(response =>
+        new URL(response.url()).pathname === `/api/v1/quests/${questId}/publish`
+        && response.request().method() === 'POST')
       await page.getByRole('button', { name: 'Publish approved quest' }).click()
+      const published = await publishedResponse
+      expect(published.status(), `Publication failed: ${await published.text()}`).toBe(200)
+      await expect.poll(async () => {
+        const result = await page.request.get(`/api/v1/quests/${questId}`)
+        return result.status() === 200 ? (await result.json()).status : `HTTP ${result.status()}`
+      }).toBe('PUBLISHED')
       await page.goto(`/quests/${questId}`)
       await expect(page.getByRole('heading', { name: title })).toBeVisible()
       const shareButton = page.getByRole('button', { name: 'Share this quest' })
