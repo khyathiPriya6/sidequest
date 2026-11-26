@@ -11,7 +11,7 @@ A team has an active creator/owner and members. Membership must be accepted expl
 
 - `POST /api/v1/teams` creates an ACTIVE team with creator OWNER. Name 3–80 chars; owner creates at most 10 active teams. Canonical UUID ID.
 - `GET /api/v1/me/teams?page=0&size=20`, `GET /api/v1/teams/{id}` list only active memberships.
-- `POST /api/v1/teams/{id}/invitations` owner sends an invitation with exact username. Active accepted friendship and no block required at send; both conditions rechecked on acceptance. One open invitation per team/user. Owner sends at most 10 invites/day. Invite acceptance locks the team and membership rows; max 20 active members, one active team membership/user, no duplicate rows.
+- `POST /api/v1/teams/{id}/invitations` owner sends an invitation with exact username. Active accepted friendship and no block required at send; both conditions rechecked on acceptance. One open invitation per team/user. Owner sends at most 10 invites/day. Invite acceptance locks the team and membership rows; max 20 active members, one active membership per (team, user), no duplicate rows.
 - `GET /api/v1/me/team-invitations`; `POST /api/v1/me/team-invitations/{id}/accept|reject`; owner may cancel with team-scoped endpoint. Other actors receive identical 404 for unknown/unauthorized IDs.
 - `POST /api/v1/teams/{id}/leave` members only; `POST /api/v1/teams/{id}/members/{userId}/remove` owner only; `POST /api/v1/teams/{id}/archive` owner only.
 - No automatic XP removal or reassignment on leave, remove, archive, or block. Active membership is always required to view team data. All writes require authenticated session and existing CSRF protection.
