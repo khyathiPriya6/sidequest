@@ -90,7 +90,7 @@ class UserPersistenceIT {
         liquibase.afterPropertiesSet();
         try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
             var rows = sql.executeQuery("SELECT count(*) FROM databasechangelog");
-            rows.next(); assertThat(rows.getInt(1)).isEqualTo(13);
+            rows.next(); assertThat(rows.getInt(1)).isEqualTo(14);
             String id = UUID.randomUUID().toString();
             sql.executeUpdate("INSERT INTO spring_session VALUES ('" + id + "','" + id + "',0,0,1800,1,'test-user')");
             sql.executeUpdate("INSERT INTO spring_session_attributes VALUES ('" + id + "','test',decode('00','hex'))");
