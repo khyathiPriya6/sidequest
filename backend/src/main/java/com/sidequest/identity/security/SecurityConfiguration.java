@@ -107,6 +107,13 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/api/v1/me/friends", "/api/v1/me/friend-requests", "/api/v1/me/friends/leaderboard").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/me/friend-requests", "/api/v1/me/friend-requests/*/*", "/api/v1/me/social/blocks", "/api/v1/me/social/unblocks").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/me/social/settings").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/v1/me/teams", "/api/v1/me/team-invitations",
+                    "/api/v1/teams/*", "/api/v1/teams/*/members",
+                    "/api/v1/teams/*/challenges", "/api/v1/teams/*/leaderboard").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/v1/teams", "/api/v1/teams/*/invitations",
+                    "/api/v1/me/team-invitations/*/*", "/api/v1/teams/*/leave",
+                    "/api/v1/teams/*/archive", "/api/v1/teams/*/challenges",
+                    "/api/v1/teams/*/members/*/remove").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/moderation/queue", "/api/v1/moderation/legacy").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/moderation/quests/*/decisions", "/api/v1/moderation/legacy/*/intake", "/api/v1/quests/*/reports", "/api/v1/me/quests/*/appeals").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/me", "/api/v1/me/quests", "/api/v1/me/quests/*", "/api/v1/me/quests/*/moderation", "/api/v1/me/participations", "/api/v1/me/participations/*", "/api/v1/me/profile", "/api/v1/me/achievements", "/api/v1/me/xp-transactions").authenticated()
