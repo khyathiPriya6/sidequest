@@ -1,4 +1,4 @@
-import { BookOpen, Compass, PlusCircle, UserRound, UsersRound } from 'lucide-react'
+import { BookOpen, Compass, PlusCircle, UserRound, UsersRound, Users } from 'lucide-react'
 
 export const navigation = [
   { to: '/quests', label: 'Explore', icon: Compass, memberOnly: false },
@@ -6,6 +6,7 @@ export const navigation = [
   { to: '/quests/new', label: 'Create', icon: PlusCircle, memberOnly: true },
   { to: '/profile', label: 'Profile', icon: UserRound, memberOnly: true },
   { to: '/friends', label: 'Friends', icon: UsersRound, memberOnly: true },
+  { to: '/teams', label: 'Teams', icon: Users, memberOnly: true },
 ] as const
 
 // member-preview is used exclusively by the development gallery.
