@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button/Button'
 import { ApiError } from '../../lib/api'
 import { getPublishedQuests, type Quest } from '../quests/questApi'
 import { createTeam, listTeams, invitations, decideInvite, getTeam, inviteMember,
-  roster, leaveTeam, archiveTeam, removeMember, addChallenge, challenges, leaderboard,
+  roster, leaveTeam, archiveTeam, removeMember, addChallenge, challenges, leaderboard, teamInvites, cancelInvite,
   type Team, type Invitation, type Member, type Challenge, type Score, type Page } from './groupsApi'
 
 function message(e: unknown) {
@@ -93,6 +93,8 @@ export function TeamDetailPage() {
   const [team,setTeam] = useState<Team | null>(null)
   const [people,setPeople] = useState<Page<Member> | null>(null)
   const [challengeList,setChallengeList] = useState<Page<Challenge> | null>(null)
+  const [outgoing,setOutgoing] = useState<Page<Invitation> | null>(null)
+  const [sentPage,setSentPage] = useState(0)
   const [ranked,setRanked] = useState<Page<Score> | null>(null)
   const [published,setPublished] = useState<Quest[]>([])
   const [username,setUsername] = useState('')
@@ -122,6 +124,15 @@ export function TeamDetailPage() {
       .finally(()=>{if(!controller.signal.aborted)setLoading(false)})
     return ()=>controller.abort()
   },[id,memberPage,challengePage,rankPage,revision])
+
+  useEffect(()=>{
+    if(team?.role!=='OWNER'){setOutgoing(null);return}
+    const controller=new AbortController()
+    void teamInvites(id,sentPage,controller.signal)
+      .then(value=>{if(!controller.signal.aborted)setOutgoing(value)})
+      .catch(e=>{if(!controller.signal.aborted)setError(message(e))})
+    return ()=>controller.abort()
+  },[id,team?.role,sentPage,revision])
 
   async function run(op: ()=>Promise<unknown>, success: string) {
     if(busy)return
@@ -156,6 +167,18 @@ export function TeamDetailPage() {
           onChange={e=>setUsername(e.target.value.toLowerCase())}/>
         <Button disabled={busy||!/^[a-z0-9_]{3,30}$/.test(username)}
           onClick={()=>void run(()=>inviteMember(team.id,username),'Team invitation sent.')}>Invite friend</Button>
+      </Card>}
+      {team.role==='OWNER' && <Card style={{display:'grid',gap:12}}>
+        <h2>Pending team invitations</h2>
+        {outgoing?.content.length===0 && <p>No pending invitations for this team.</p>}
+        {outgoing?.content.map(i=><div key={i.id}>
+          {i.recipient}{' '}
+          <Button variant="secondary" disabled={busy}
+            onClick={()=>void run(()=>cancelInvite(i.id,i.version),'Invitation cancelled.')}>Cancel invitation</Button>
+        </div>)}
+        {outgoing && outgoing.totalPages>1 && <Pages current={outgoing.page}
+          next={outgoing.hasNext} previous={outgoing.hasPrevious}
+          label="Outgoing team invitation pages" onPage={setSentPage}/>}
       </Card>}
       {team.state==='ACTIVE' && team.role==='OWNER' && <Card style={{display:'grid',gap:12}}>
         <h2>Launch a group Quest challenge</h2>
