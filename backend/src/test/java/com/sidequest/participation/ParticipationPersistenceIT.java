@@ -198,7 +198,7 @@ class ParticipationPersistenceIT {
              var statement = connection.createStatement();
              var rows = statement.executeQuery("SELECT count(*) FROM databasechangelog")) {
             rows.next();
-            assertThat(rows.getInt(1)).isEqualTo(11);
+            assertThat(rows.getInt(1)).isEqualTo(14);
         }
     }
 
