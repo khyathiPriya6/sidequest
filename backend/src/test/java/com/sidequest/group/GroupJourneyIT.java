@@ -113,6 +113,17 @@ class GroupJourneyIT extends ParticipationApiSupport {
                 Long.class,participation)).isEqualTo(1);
         assertThat(body(call(owner,"GET",url+"/challenges",null)).get("content").get(0)
                 .get("completed").asInt()).isEqualTo(1);
+        // Archiving must preserve already eligible personal XP and group progress.
+        assertThat(archive(creator,published).statusCode()).isEqualTo(200);
+        assertThat(body(call(owner,"GET",url+"/challenges",null)).get("content").get(0)
+                .get("earnedXp").asInt()).isEqualTo(175);
+        // A later safety hide removes only derived team eligibility, never personal XP history.
+        jdbc.update("UPDATE quest_moderation SET state='HIDDEN' WHERE quest_id=?",published.id());
+        var hidden=body(call(owner,"GET",url+"/challenges",null)).get("content").get(0);
+        assertThat(hidden.get("earnedXp").asInt()).isZero();
+        assertThat(hidden.get("title").asText()).isEqualTo("Quest unavailable");
+        assertThat(jdbc.queryForObject("SELECT sum(amount) FROM xp_ledger WHERE participation_id=?",
+                Long.class,participation)).isEqualTo(175);
         assertThat(call(owner,"POST",url+"/challenges",json.writeValueAsString(Map.of(
                 "questId",published.id(),"days",7,"targetCompletions",2))).statusCode()).isEqualTo(409);
     }
