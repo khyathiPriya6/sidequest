@@ -60,6 +60,12 @@ export const roster = (id: string, page=0, signal?: AbortSignal) =>
 export const inviteMember = (teamId: string, username: string) =>
   mutation('/api/v1/teams/' + encodeURIComponent(teamId) + '/invitations',
     { username }, invitation)
+export const teamInvites = (teamId: string, page=0, signal?: AbortSignal) =>
+  read('/api/v1/teams/' + encodeURIComponent(teamId) + '/invitations?page=' + page,
+    (x): x is Page<Invitation> => pageOf(x, invitation), signal)
+export const cancelInvite = (id: string, expectedVersion: number) =>
+  mutation('/api/v1/me/team-invitations/' + encodeURIComponent(id) + '/cancel',
+    { expectedVersion }, invitation)
 export const invitations = (page=0, signal?: AbortSignal) =>
   read('/api/v1/me/team-invitations?page=' + page,
     (x): x is Page<Invitation> => pageOf(x, invitation), signal)
