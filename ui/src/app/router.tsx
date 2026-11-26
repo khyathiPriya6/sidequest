@@ -5,6 +5,7 @@ import { QuestDetailPage, ParticipationDetailPage } from '../pages/QuestDetailPa
 import { PlayerProfilePage } from '../features/progress/PlayerProfilePage'
 import { ModeratorDashboard } from '../features/safety/ModeratorDashboard'
 import { FriendsPage, FriendLeaderboardPage, PublicSocialProfilePage } from '../features/social/SocialPages'
+import { TeamsPage, TeamDetailPage } from '../features/groups/GroupPages'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { AuthPage } from '../features/auth/AuthPage'
 import { RequireAuth } from '../features/auth/RequireAuth'
@@ -43,6 +44,8 @@ export function createAppRoutes(): RouteObject[] {
             { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
             { path: '/profile', handle: { title: 'Your profile' }, element: <PlayerProfilePage /> },
             { path: '/friends', handle: { title: 'Friends' }, element: <FriendsPage /> },
+            { path: '/teams', handle: { title: 'Teams' }, element: <TeamsPage /> },
+            { path: '/teams/:id', handle: { title: 'Team details' }, element: <TeamDetailPage /> },
             { path: '/friends/leaderboard', handle: { title: 'Friends leaderboard' }, element: <FriendLeaderboardPage /> },
             { path: '/players/:id', handle: { title: 'Player profile' }, element: <PublicSocialProfilePage /> },
             { path: '/participations/:id', handle: { title: 'Participation details' }, element: <ParticipationDetailPage /> },
