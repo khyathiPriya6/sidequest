@@ -161,6 +161,50 @@ class GroupJourneyIT extends ParticipationApiSupport {
         }
     }
 
+
+    @Test
+    void concurrentInvitationsCannotExceedTeamCapacity() throws Exception {
+        var owner=register();
+        UUID team=createTeam(owner);
+        // Build 19 active members inside the disposable database, then race the last seat.
+        for(int i=0;i<18;i++){
+            var filler=register();
+            jdbc.update("""
+                INSERT INTO team_members(team_id,user_id,role,state)
+                VALUES(?,?,'MEMBER','ACTIVE')
+                """,team,filler.id());
+        }
+        var one=register();var two=register();
+        becomeFriends(owner,one);becomeFriends(owner,two);
+        var a=call(owner,"POST","/api/v1/teams/"+team+"/invitations",
+                jsonBody("username",username(one)));
+        var b=call(owner,"POST","/api/v1/teams/"+team+"/invitations",
+                jsonBody("username",username(two)));
+        UUID aid=UUID.fromString(body(a).get("id").asText());
+        UUID bid=UUID.fromString(body(b).get("id").asText());
+        var start=new java.util.concurrent.CountDownLatch(1);
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var first=pool.submit(()->{
+                assertThat(start.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                return call(one,"POST","/api/v1/me/team-invitations/"+aid+"/accept",
+                        jsonBody("expectedVersion",0)).statusCode();
+            });
+            var second=pool.submit(()->{
+                assertThat(start.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                return call(two,"POST","/api/v1/me/team-invitations/"+bid+"/accept",
+                        jsonBody("expectedVersion",0)).statusCode();
+            });
+            start.countDown();
+            assertThat(java.util.List.of(first.get(15,java.util.concurrent.TimeUnit.SECONDS),
+                    second.get(15,java.util.concurrent.TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(200,409);
+            assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM team_members WHERE team_id=? AND state='ACTIVE'
+                """,Long.class,team)).isEqualTo(20);
+        } finally {start.countDown();pool.shutdownNow();}
+    }
+
     @Test
     void guestCsrfAndPageValidationAreRejected() throws Exception {
         var owner=register();UUID team=createTeam(owner);
