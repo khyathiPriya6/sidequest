@@ -16,6 +16,9 @@ final class SocialProfileFailure extends RuntimeException {
     static SocialProfileFailure notFound() {
         return new SocialProfileFailure(404, "not_found", "Profile not found.");
     }
+    static SocialProfileFailure limited() {
+        return new SocialProfileFailure(429, "rate_limited", "Too many social requests. Try again later.");
+    }
     static SocialProfileFailure conflict() {
         return new SocialProfileFailure(409, "version_conflict", "Social profile settings changed. Reload before retrying.");
     }

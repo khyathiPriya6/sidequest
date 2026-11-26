@@ -60,12 +60,24 @@ public class SocialProfileService {
               FROM social_profile_preferences p
               JOIN users u ON u.id = p.user_id
              WHERE p.public_id = ? AND u.status = 'ACTIVE'
-               AND (p.visibility = 'PUBLIC' OR p.user_id = ?)
+               AND (p.user_id = ? OR (
+                   NOT EXISTS (SELECT 1 FROM social_blocks blocked
+                     WHERE (blocked.blocker_id=p.user_id AND blocked.blocked_id=?)
+                        OR (blocked.blocker_id=? AND blocked.blocked_id=p.user_id))
+                   AND (p.visibility = 'PUBLIC' OR
+                    (p.visibility='FRIENDS' AND EXISTS (
+                       SELECT 1 FROM friend_connections c
+                       WHERE c.state='ACCEPTED'
+                         AND ((c.user_low_id=p.user_id AND c.user_high_id=?)
+                          OR (c.user_high_id=p.user_id AND c.user_low_id=?))
+                         AND NOT EXISTS (SELECT 1 FROM social_blocks b
+                           WHERE (b.blocker_id=p.user_id AND b.blocked_id=?)
+                              OR (b.blocker_id=? AND b.blocked_id=p.user_id))
+                    )))))
             """, rs -> rs.next() ? new Profile(rs.getObject(1, UUID.class), rs.getString(2)) : null,
-                publicId, viewer);
+                publicId, viewer, viewer, viewer, viewer, viewer, viewer, viewer);
         if (visible == null) throw SocialProfileFailure.notFound();
         return visible;
-        // FRIENDS remains inaccessible to others until M5-03 introduces accepted friendships.
     }
 
     private Preferences findSettings(UUID owner) {

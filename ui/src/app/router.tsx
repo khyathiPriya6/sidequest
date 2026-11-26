@@ -4,6 +4,7 @@ import { ExploreShell } from '../pages/ExploreShell'
 import { QuestDetailPage, ParticipationDetailPage } from '../pages/QuestDetailPage'
 import { PlayerProfilePage } from '../features/progress/PlayerProfilePage'
 import { ModeratorDashboard } from '../features/safety/ModeratorDashboard'
+import { FriendsPage, FriendLeaderboardPage, PublicSocialProfilePage } from '../features/social/SocialPages'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { AuthPage } from '../features/auth/AuthPage'
 import { RequireAuth } from '../features/auth/RequireAuth'
@@ -41,6 +42,9 @@ export function createAppRoutes(): RouteObject[] {
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
             { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
             { path: '/profile', handle: { title: 'Your profile' }, element: <PlayerProfilePage /> },
+            { path: '/friends', handle: { title: 'Friends' }, element: <FriendsPage /> },
+            { path: '/friends/leaderboard', handle: { title: 'Friends leaderboard' }, element: <FriendLeaderboardPage /> },
+            { path: '/players/:id', handle: { title: 'Player profile' }, element: <PublicSocialProfilePage /> },
             { path: '/participations/:id', handle: { title: 'Participation details' }, element: <ParticipationDetailPage /> },
           ],
         },

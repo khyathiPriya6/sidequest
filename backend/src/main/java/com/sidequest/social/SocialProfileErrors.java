@@ -6,7 +6,7 @@ import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 
-@RestControllerAdvice(assignableTypes = SocialProfileController.class)
+@RestControllerAdvice(assignableTypes = {SocialProfileController.class, FriendshipController.class})
 public class SocialProfileErrors {
     @ExceptionHandler(SocialProfileFailure.class)
     ResponseEntity<ProblemDetail> failure(SocialProfileFailure exception, HttpServletRequest request) {

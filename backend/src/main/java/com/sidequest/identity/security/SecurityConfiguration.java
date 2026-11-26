@@ -104,6 +104,8 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/leaderboard", "/api/v1/me/leaderboard-rank").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/me/social/settings", "/api/v1/social/profiles/*").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/v1/me/friends", "/api/v1/me/friend-requests", "/api/v1/me/friends/leaderboard").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/v1/me/friend-requests", "/api/v1/me/friend-requests/*/*", "/api/v1/me/social/blocks", "/api/v1/me/social/unblocks").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/me/social/settings").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/moderation/queue", "/api/v1/moderation/legacy").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/moderation/quests/*/decisions", "/api/v1/moderation/legacy/*/intake", "/api/v1/quests/*/reports", "/api/v1/me/quests/*/appeals").authenticated()
