@@ -110,7 +110,7 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, "/api/v1/me/teams", "/api/v1/me/team-invites", "/api/v1/teams/*",
                     "/api/v1/teams/*/members", "/api/v1/teams/*/challenges", "/api/v1/teams/*/leaderboard").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/me/teams", "/api/v1/me/team-invites/*/*",
-                    "/api/v1/teams/*/invites", "/api/v1/teams/*/challenges").authenticated()
+                    "/api/v1/teams/*/invites", "/api/v1/teams/*/invites/*/cancel", "/api/v1/teams/*/challenges").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/teams/*/members/*").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/me/teams", "/api/v1/me/team-invitations",
                     "/api/v1/teams/*", "/api/v1/teams/*/members", "/api/v1/teams/*/invitations",
