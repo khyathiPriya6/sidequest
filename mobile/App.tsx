@@ -5,9 +5,11 @@ import {
 } from 'react-native'
 import { questDetails, questFeed, type Quest, type QuestPage } from './src/api'
 
+// Keep native UI colors aligned with ui/src/styles/tokens.css.
 const palette = {
-  bg: '#101b1a', surface: '#1c2b29', raised: '#263936', accent: '#a7e2a5',
-  text: '#f4f6ee', muted: '#abbeb4', border: '#455c54', danger: '#ffc6b9',
+  bg: '#0B1020', surface: '#151C30', raised: '#202A43', accent: '#A78BFA',
+  text: '#F5F7FF', muted: '#C0CBE2', border: '#364460', danger: '#FB8794',
+  reward: '#F6C665',
 }
 
 function Pill({ children }: { children: string }) {
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 20, fontWeight: '700', color: palette.text },
   body: { color: palette.muted, fontSize: 14, lineHeight: 22 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  reward: { color: palette.accent, fontSize: 16, fontWeight: '700' },
+  reward: { color: palette.reward, fontSize: 16, fontWeight: '700' },
   open: { color: palette.accent, fontWeight: '700' },
   content: { padding: 24, gap: 15 },
   back: { paddingVertical: 12 },
