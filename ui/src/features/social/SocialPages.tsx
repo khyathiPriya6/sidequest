@@ -61,7 +61,7 @@ export function FriendsPage() {
     {settings && <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Your social privacy</h2>
       <label htmlFor="visibility">Who can see your social profile?</label>
-      <select id="visibility" value={settings.visibility} disabled={busy}
+      <select id="visibility" style={{width:'100%'}} value={settings.visibility} disabled={busy}
         onChange={e => void action(() => setVisibility(e.target.value as Visibility,settings.version), 'Privacy updated.')}>
         <option value="PRIVATE">Private (only me)</option>
         <option value="FRIENDS">Friends only</option>
@@ -74,7 +74,7 @@ export function FriendsPage() {
       <h2>Invite a friend</h2>
       <p>Use their exact username. There is no public people directory.</p>
       <label htmlFor="friend-name">Username</label>
-      <input id="friend-name" value={username} maxLength={30} autoComplete="off" onChange={e => setUsername(e.target.value.toLowerCase())}/>
+      <input id="friend-name" value={username} maxLength={30} autoComplete="off" placeholder="Exact username" style={{width:'100%'}} onChange={e => setUsername(e.target.value.toLowerCase())}/>
       <Button disabled={busy || !/^[a-z0-9_]{3,30}$/.test(username)}
         onClick={() => void action(() => invite(username), 'Request sent.')}>Send request</Button>
       <Button variant="secondary" disabled={busy || !/^[a-z0-9_]{3,30}$/.test(username)}
@@ -97,7 +97,7 @@ export function FriendsPage() {
     <Card style={{ display:'grid',gap:'var(--space-3)' }}>
       <h2>Outgoing requests</h2>
       {outgoing && !outgoing.content.length && <p>No pending invitations.</p>}
-      {outgoing?.content.map(c => <div key={c.id}><span>{c.username}</span>{' '}
+      {outgoing?.content.map(c => <div key={c.id} className="sq-list-row"><span>{c.username}</span>{' '}
         <Button variant="secondary" disabled={busy} onClick={() => void action(() => decide(c.id,'cancel',c.version),'Request cancelled.')}>Cancel</Button></div>)}
       {outgoing && outgoing.totalPages > 1 && <nav aria-label="Outgoing request pages">
         <Button variant="secondary" disabled={!outgoing.hasPrevious || busy} onClick={() => setOutgoingPage(n => n - 1)}>Previous</Button>
