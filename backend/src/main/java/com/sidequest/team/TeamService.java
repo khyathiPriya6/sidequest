@@ -163,6 +163,18 @@ public class TeamService {
         return new Invite(id,team,teamRow(actor,team).name(),next,version+1);
     }
     @Transactional
+    public void cancelInvite(UUID actor,UUID team,UUID inviteId,long version){
+        owner(actor,team);
+        if(version<0)throw bad();
+        lockTeam(team);
+        int changed=jdbc.update("""
+          UPDATE team_invites SET state='CANCELLED',version=version+1,updated_at=?
+           WHERE id=? AND team_id=? AND state='PENDING' AND version=?
+          """,Timestamp.from(clock.instant()),inviteId,team,version);
+        if(changed!=1)throw conflict();
+    }
+
+    @Transactional
     public void leaveOrRemove(UUID actor,UUID team,String username){
         member(actor,team);
         UUID peer=lookup(username);
@@ -198,11 +210,13 @@ public class TeamService {
           SELECT c.id,c.quest_id,q.title,c.starts_at,c.ends_at,
           count(DISTINCT p.user_id) AS completed_members,COALESCE(sum(x.amount),0) AS earned_xp
           FROM team_challenges c JOIN quests q ON q.id=c.quest_id
+          JOIN quest_moderation mod ON mod.quest_id=q.id AND mod.state='APPROVED'
           LEFT JOIN team_members tm ON tm.team_id=c.team_id
           LEFT JOIN participations p ON p.user_id=tm.user_id AND p.quest_id=c.quest_id
              AND p.status='COMPLETED' AND p.completed_at BETWEEN c.starts_at AND c.ends_at
           LEFT JOIN xp_ledger x ON x.participation_id=p.id
-          WHERE c.id=? AND c.team_id=?
+          WHERE c.id=? AND c.team_id=? AND q.status='PUBLISHED'
+            AND NOT EXISTS(SELECT 1 FROM quest_reports rep WHERE rep.quest_id=q.id AND rep.resolution='OPEN')
           GROUP BY c.id,q.title
           """,rs->rs.next()?new Challenge(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class),
            rs.getString(3),rs.getTimestamp(4).toInstant(),rs.getTimestamp(5).toInstant(),
