@@ -125,7 +125,7 @@ class GroupJourneyIT extends ParticipationApiSupport {
         assertThat(jdbc.queryForObject("SELECT sum(amount) FROM xp_ledger WHERE participation_id=?",
                 Long.class,participation)).isEqualTo(175);
         assertThat(call(owner,"POST",url+"/challenges",json.writeValueAsString(Map.of(
-                "questId",published.id(),"days",7,"targetCompletions",2))).statusCode()).isEqualTo(409);
+                "questId",published.id(),"days",7,"targetCompletions",2))).statusCode()).isEqualTo(404);
     }
 
     @Test
