@@ -125,7 +125,7 @@ export function TeamDetailsPage(){
    <input id="team-challenge-start" type="datetime-local" value={start} onChange={e=>setStart(e.target.value)}/>
    <label htmlFor="team-challenge-end">Ends at (your local time)</label>
    <input id="team-challenge-end" type="datetime-local" value={end} onChange={e=>setEnd(e.target.value)}/>
-   <Button disabled={pending||!validQuest||!start||!end||new Date(end)<=new Date(start)}
+   <Button disabled={pending||!validQuest||!start||!end||Date.parse(end)<=Date.parse(start)}
      onClick={()=>void act(()=>createChallenge(id,questId,new Date(start).toISOString(),new Date(end).toISOString()),'Challenge added.')}>
      Create challenge
    </Button>
