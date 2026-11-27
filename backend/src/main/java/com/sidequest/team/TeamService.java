@@ -4,7 +4,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.*;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -243,11 +242,16 @@ public class TeamService {
     @Transactional(readOnly=true)
     public Page<Challenge> challenges(UUID actor,UUID team,int index,int size){
         validPage(index,size);member(actor,team);
-        long n=jdbc.queryForObject("SELECT count(*) FROM team_challenges WHERE team_id=?",Long.class,team);
-        List<UUID> ids=jdbc.query("""
-          SELECT id FROM team_challenges WHERE team_id=?
-          ORDER BY starts_at DESC,id LIMIT ? OFFSET ?
-          """,(rs,i)->rs.getObject(1,UUID.class),team,size,(long)index*size);
+        String eligible="""
+          FROM team_challenges c JOIN quests q ON q.id=c.quest_id
+          JOIN quest_moderation mo ON mo.quest_id=q.id AND mo.state='APPROVED'
+          WHERE c.team_id=? AND q.status='PUBLISHED'
+          AND NOT EXISTS(SELECT 1 FROM quest_reports rep WHERE rep.quest_id=q.id AND rep.resolution='OPEN')
+          """;
+        long n=jdbc.queryForObject("SELECT count(*) "+eligible,Long.class,team);
+        List<UUID> ids=jdbc.query("SELECT c.id "+eligible+
+          " ORDER BY c.starts_at DESC,c.id LIMIT ? OFFSET ?",
+          (rs,i)->rs.getObject(1,UUID.class),team,size,(long)index*size);
         return page(ids.stream().map(id->challenge(id,team)).toList(),index,size,n);
     }
     @Transactional(readOnly=true)
