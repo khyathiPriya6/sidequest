@@ -33,5 +33,3 @@ databaseChangeLog:
       file: db/changelog/014-social-connections.sql
   - include:
       file: db/changelog/015-group-teams.sql
-  - include:
-      file: db/changelog/015-teams.sql
