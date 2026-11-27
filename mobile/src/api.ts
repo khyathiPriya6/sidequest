@@ -1,5 +1,6 @@
 export type Quest = {
   id: string
+  creatorId: string
   title: string
   description: string | null
   category: string | null
