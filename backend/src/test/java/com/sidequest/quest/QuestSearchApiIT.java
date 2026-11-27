@@ -51,7 +51,7 @@ class QuestSearchApiIT {
         // The isolated suite shares its disposable DB; remove derived participation
         // fixtures before parent Quests. TRUNCATE bypasses the ledger's append-only
         // DELETE trigger without changing production history or schema.
-        jdbc.execute("TRUNCATE TABLE xp_ledger, participations");
+        jdbc.execute("TRUNCATE TABLE team_challenges, xp_ledger, participations");
         moderation.deleteAllInBatch();
         quests.deleteAllInBatch();
     }
