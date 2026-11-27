@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "SideQuest",
+    "slug": "sidequest-mobile",
+    "scheme": "sidequest",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.sidequest.mobile"
+    },
+    "extra": {}
+  }
+}
