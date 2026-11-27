@@ -20,3 +20,44 @@ p { color: var(--color-muted); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+
+/* Consistent controls for legacy feature pages and new shared forms. */
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-input);
+  min-height: 48px;
+  min-width: 0;
+  padding: .75rem 1rem;
+  max-width: 100%;
+  transition: border-color var(--duration), background var(--duration), box-shadow var(--duration);
+}
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea):focus-visible {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+:where(input, select, textarea):disabled { opacity: .6; cursor: not-allowed; }
+:where(input, textarea)::placeholder { color: var(--color-muted); opacity: .8; }
+:where(textarea) { resize: vertical; min-height: 7rem; }
+:where(label) { font-weight: 600; }
+.sq-form-card { max-width: 42rem; }
+.sq-form-fields { display: grid; gap: 1rem; width: 100%; }
+.sq-form-fields > :is(input, textarea, select) { width: 100%; }
+.sq-form-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.sq-form-actions > button { min-width: 9.5rem; }
+.sq-list-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; padding: 1rem 0; border-top: 1px solid var(--color-border); }
+.sq-list-row:first-of-type { border-top: 0; }
+.sq-list-row > :first-child { min-width: 0; }
+.sq-pagination { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+@media (max-width: 35rem) {
+  .sq-form-actions { flex-direction: column; align-items: stretch; }
+  .sq-form-actions > button { width: 100%; min-width: 0; }
+  .sq-form-card { max-width: none; }
+  .sq-list-row { align-items: stretch; }
+  .sq-list-row > button { width: 100%; }
+  .sq-pagination { justify-content: space-between; }
+}
