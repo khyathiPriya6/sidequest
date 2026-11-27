@@ -17,6 +17,7 @@ public class TeamService {
     }
     public record Team(UUID id,String name,boolean owner,int members) {}
     public record Invite(UUID id,UUID teamId,String teamName,String state,long version) {}
+    public record OutgoingInvite(UUID id,String username,long version) {}
     public record Challenge(UUID id,UUID questId,String title,Instant startsAt,Instant endsAt,int completedMembers,long earnedXp) {}
     public record Score(String username,long earnedXp,long rank) {}
     public record Page<T>(List<T> content,int page,int size,long totalElements,int totalPages,boolean hasNext,boolean hasPrevious) {}
@@ -137,6 +138,22 @@ public class TeamService {
                 rs.getString(3),rs.getString(4),rs.getLong(5)),actor,size,(long)index*size);
         return page(rows,index,size,n);
     }
+    @Transactional(readOnly=true)
+    public Page<OutgoingInvite> outgoing(UUID actor,UUID team,int index,int size){
+        validPage(index,size);owner(actor,team);
+        String where="""
+          FROM team_invites i JOIN users u ON u.id=i.invitee_id
+          WHERE i.team_id=? AND i.state='PENDING'
+          """;
+        long n=jdbc.queryForObject("SELECT count(*) "+where,Long.class,team);
+        List<OutgoingInvite> rows=jdbc.query("""
+          SELECT i.id,u.username,i.version
+          """+where+" ORDER BY i.created_at DESC,i.id LIMIT ? OFFSET ?",
+            (rs,k)->new OutgoingInvite(rs.getObject(1,UUID.class),rs.getString(2),rs.getLong(3)),
+            team,size,(long)index*size);
+        return page(rows,index,size,n);
+    }
+
     @Transactional
     public Invite respond(UUID actor,UUID id,boolean accept,long version){
         active(actor);
