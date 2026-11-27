@@ -10,10 +10,10 @@ export function Brand() {
   </Link>
 }
 
-export function DesktopSidebar({ mode }: { mode: NavigationMode }) {
+export function DesktopSidebar({ mode, isModerator = false }: { mode: NavigationMode; isModerator?: boolean }) {
   return <aside className={styles.sidebar}>
     <Brand />
-    <div className={styles.navSection}><p className={styles.eyebrow}>Your adventure</p><Navigation mode={mode} /></div>
+    <div className={styles.navSection}><p className={styles.eyebrow}>Your adventure</p><Navigation mode={mode} isModerator={isModerator} /></div>
     <div className={styles.sidebarFoot}><span className={styles.eyebrow}>One quest at a time</span><p>Small challenges.<br />Real momentum.</p></div>
   </aside>
 }

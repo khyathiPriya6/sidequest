@@ -97,15 +97,32 @@ export function ModeratorDashboard() {
       <p>Review the full context and policy before taking action. Do not decide solely from keywords or report counts.</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
         {(item.state === 'PENDING_REVIEW' || item.state === 'UNDER_REVIEW') && <>
-          <Button disabled={!!busyId} onClick={() => setConfirm({ item, action: 'APPROVE' })}>Approve</Button>
-          <Button disabled={!!busyId} variant="secondary" onClick={() => setConfirm({ item, action: 'REJECT' })}>Reject</Button>
+          <Button disabled={!!busyId} onClick={() => { setReason('DANGEROUS_ACT'); setConfirm({ item, action: 'APPROVE' }) }}>Approve</Button>
+          <Button disabled={!!busyId} variant="secondary" onClick={() => { setReason('DANGEROUS_ACT'); setConfirm({ item, action: 'REJECT' }) }}>Reject</Button>
         </>}
         {item.state === 'APPROVED' && item.questStatus === 'PUBLISHED' && <>
-          <Button disabled={!!busyId} variant="destructive" onClick={() => setConfirm({ item, action: 'HIDE' })}>Hide quest</Button>
+          <Button disabled={!!busyId} variant="destructive" onClick={() => { setReason('DANGEROUS_ACT'); setConfirm({ item, action: 'HIDE' }) }}>Hide quest</Button>
           {item.reports > 0 && <Button disabled={!!busyId} variant="secondary"
             onClick={() => { setReason('NO_POLICY_VIOLATION'); setConfirm({ item, action: 'DISMISS_REPORTS' }) }}>Dismiss reports</Button>}
         </>}
       </div>
+      {confirm?.item.questId === item.questId && <Card role="group" aria-label="Confirm moderation decision" style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      <h2>Confirm {confirm.action.toLowerCase()}?</h2>
+      <p>{confirm.item.title}</p>
+      {confirm.action !== 'APPROVE' && <>
+        <label htmlFor="moderation-reason">Reason code</label>
+        <select id="moderation-reason" value={reason} onChange={e => setReason(e.target.value)}>
+          {['DANGEROUS_ACT', 'SELF_HARM', 'ILLEGAL', 'VIOLENCE_HARASSMENT',
+            'HATE', 'EXPLOITATION', 'FRAUD_SPAM', 'PRIVACY', 'OTHER',
+            'NO_POLICY_VIOLATION', 'DUPLICATE_OR_ABUSIVE_REPORTS'].map(code =>
+            <option key={code} value={code}>{code.replaceAll('_', ' ')}</option>)}
+        </select>
+      </>}
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <Button disabled={!!busyId} onClick={() => void decide()}>Confirm decision</Button>
+        <Button variant="secondary" disabled={!!busyId} onClick={() => setConfirm(null)}>Cancel</Button>
+      </div>
+    </Card>}
     </Card>)}
     {!loading && !restricted && data && data.totalPages > 1 && <nav aria-label="Review queue pages"
       style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
@@ -140,22 +157,6 @@ export function ModeratorDashboard() {
       <Button disabled={!!busyId} onClick={() => void intakeLegacy()}>Confirm intake</Button>
       <Button variant="secondary" disabled={!!busyId} onClick={() => setIntakeTarget(null)}>Cancel</Button>
     </Card>}
-    {confirm && <Card role="group" aria-label="Confirm moderation decision" style={{ display: 'grid', gap: 'var(--space-3)' }}>
-      <h2>Confirm {confirm.action.toLowerCase()}?</h2>
-      <p>{confirm.item.title}</p>
-      {confirm.action !== 'APPROVE' && <>
-        <label htmlFor="moderation-reason">Reason code</label>
-        <select id="moderation-reason" value={reason} onChange={e => setReason(e.target.value)}>
-          {['DANGEROUS_ACT', 'SELF_HARM', 'ILLEGAL', 'VIOLENCE_HARASSMENT',
-            'HATE', 'EXPLOITATION', 'FRAUD_SPAM', 'PRIVACY', 'OTHER',
-            'NO_POLICY_VIOLATION', 'DUPLICATE_OR_ABUSIVE_REPORTS'].map(code =>
-            <option key={code} value={code}>{code.replaceAll('_', ' ')}</option>)}
-        </select>
-      </>}
-      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <Button disabled={!!busyId} onClick={() => void decide()}>Confirm decision</Button>
-        <Button variant="secondary" disabled={!!busyId} onClick={() => setConfirm(null)}>Cancel</Button>
-      </div>
-    </Card>}
+
   </section>
 }
