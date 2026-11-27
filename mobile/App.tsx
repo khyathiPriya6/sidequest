@@ -3,7 +3,7 @@ import {
   ActivityIndicator, Alert, FlatList, Keyboard, Pressable, SafeAreaView,
   ScrollView, StatusBar, StyleSheet, Text, TextInput, View,
 } from 'react-native'
-import { api, ApiFailure, type Achievement, type Challenge, type Connection,
+import { api, type Achievement, type Challenge, type Connection,
   type Invitation, type Member, type Participation, type Profile, type Review,
   type Score, type Team, type User } from './src/client'
 import type { Quest } from './src/api'
@@ -68,6 +68,7 @@ export default function App() {
   const [password,setPassword] = useState('')
   const [tab,setTab] = useState<Tab>('Explore')
   const [selected,setSelected] = useState<Quest|null>(null)
+  const [selectedParticipation,setSelectedParticipation] = useState<Participation|null>(null)
   const [selectedTeam,setSelectedTeam] = useState<Team|null>(null)
   const [busy,setBusy] = useState(false)
   const [loading,setLoading] = useState(false)
@@ -185,8 +186,10 @@ export default function App() {
     }catch(e){setError(message(e))}finally{setBusy(false)}
   }
   function openQuest(q:Quest){
-    setSelected(q);setError('');setNotice('')
+    setSelected(q);setSelectedParticipation(null);setError('');setNotice('')
     void api.quest(q.id).then(setSelected).catch(e=>setError(message(e)))
+    if(user) void api.byQuest(q.id).then(rows=>setSelectedParticipation(rows.content[0]??null))
+      .catch(e=>setError(message(e)))
   }
   function startDraft(q?:Quest){
     setEditingId(q?.id??null);setDraftName(q?.title??'');setDraftDescription(q?.description??'')
@@ -205,8 +208,6 @@ export default function App() {
     },'Quest draft saved.',()=>changeTab('My Quests'))
   }
   const visibleTabs=moderator?[...tabs,'Moderation' as Tab]:tabs
-  const participationFor=(id:string)=>participations.find(p=>p.questId===id)
-  const buttonDisabled=busy||loading
 
   return <SafeAreaView style={styles.root}>
     <StatusBar barStyle="light-content"/>
@@ -225,10 +226,10 @@ export default function App() {
         <Card><Text style={styles.reward}>✦ {selected.rewardXp??0} XP</Text>
           <Small>{selected.category??'Quest'} · {selected.difficulty??'Not rated'}</Small>
           <Text style={styles.body}>{selected.description||'No description provided.'}</Text>
-          {user&&participationFor(selected.id)?.status==='COMPLETED'?<Text style={styles.success}>Completed</Text>:
-          user&&participationFor(selected.id)?<Action label="Complete Quest" disabled={busy}
+          {user&&selectedParticipation?.status==='COMPLETED'?<Text style={styles.success}>Completed</Text>:
+          user&&selectedParticipation?<Action label="Complete Quest" disabled={busy}
             onPress={()=>confirm('Complete Quest?','Completion is permanent; XP is awarded once.',
-              ()=>api.complete(participationFor(selected.id)!.id),'Quest completed.',()=>{setSelected(null);changeTab('My Quests')})}/>:
+              ()=>api.complete(selectedParticipation!.id),'Quest completed.',()=>{setSelected(null);changeTab('My Quests')})}/>:
           !user?<Action label="Sign in to join" onPress={()=>changeTab('Profile')}/>:
           selected.creatorId===user.id?<Small>You cannot join your own Quest.</Small>:
           <Action label="Join Quest" disabled={busy} onPress={()=>void act(()=>api.join(selected.id),'Quest joined.',
