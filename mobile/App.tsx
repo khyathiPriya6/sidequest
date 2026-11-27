@@ -22,32 +22,53 @@ const message = (e: unknown) => e instanceof Error ? e.message : 'Something went
 function Label({children}:{children:React.ReactNode}) { return <Text style={styles.label}>{children}</Text> }
 function Small({children}:{children:React.ReactNode}) { return <Text style={styles.muted}>{children}</Text> }
 function Card({children}:{children:React.ReactNode}) { return <View style={styles.card}>{children}</View> }
-function Action({label,onPress,disabled=false,kind='primary'}:{label:string;onPress:()=>void;disabled?:boolean;kind?:'primary'|'secondary'|'danger'}) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress}
-    style={({pressed})=>[styles.button,kind==='secondary'&&styles.secondaryButton,
-      kind==='danger'&&styles.dangerButton,(disabled||pressed)&&{opacity:0.55}]}>
+function Action({label,onPress,disabled=false,kind='primary',compact=false}:{
+  label:string;onPress:()=>void;disabled?:boolean;kind?:'primary'|'secondary'|'danger';compact?:boolean
+}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label}
+    accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
+    style={({pressed})=>[styles.button,compact&&styles.compactButton,
+      kind==='secondary'&&styles.secondaryButton,kind==='danger'&&styles.dangerButton,
+      (disabled||pressed)&&styles.pressedButton]}>
     <Text style={[styles.buttonText,kind!=='primary'&&{color:color.text}]}>{label}</Text>
   </Pressable>
 }
-function Field({label,value,onChange,secure=false,multiline=false,keyboardType='default'}:{
+function Field({label,value,onChange,secure=false,multiline=false,keyboardType='default',placeholder}:{
   label:string;value:string;onChange:(s:string)=>void;secure?:boolean;multiline?:boolean;
-  keyboardType?:'default'|'email-address'|'numeric'
+  keyboardType?:'default'|'email-address'|'numeric';placeholder?:string
 }) {
-  return <View style={styles.field}><Label>{label}</Label><TextInput
-    accessibilityLabel={label} value={value} onChangeText={onChange} secureTextEntry={secure}
-    multiline={multiline} keyboardType={keyboardType} autoCapitalize={keyboardType==='email-address'?'none':'sentences'}
-    style={[styles.input,multiline&&{minHeight:100,textAlignVertical:'top'}]}
-    placeholderTextColor={color.muted} /></View>
+  const [focused,setFocused]=useState(false)
+  const identifier=label.toLowerCase()
+  const isIdentity=keyboardType==='email-address'||identifier.includes('username')||identifier.includes('quest id')
+  return <View style={styles.field}>
+    <Label>{label}</Label>
+    <TextInput
+      accessibilityLabel={label} accessibilityHint={secure?'Password is hidden':undefined}
+      value={value} onChangeText={onChange} secureTextEntry={secure}
+      multiline={multiline} keyboardType={keyboardType}
+      autoCapitalize={isIdentity||secure?'none':'sentences'}
+      autoCorrect={!isIdentity&&!secure} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+      placeholder={placeholder??('Enter '+label.toLowerCase())}
+      placeholderTextColor="#8795B3"
+      selectionColor={color.accent}
+      style={[styles.input,focused&&styles.inputFocused,multiline&&styles.multilineInput]}
+    />
+  </View>
 }
 function Chips({values,selected,onChange}:{values:string[];selected:string;onChange:(v:string)=>void}) {
-  return <View style={styles.chips}>{values.map(v=><Pressable key={v} accessibilityRole="button"
-    accessibilityState={{selected:v===selected}} onPress={()=>onChange(v)}
-    style={[styles.chip,v===selected&&styles.selectedChip]}>
-    <Text style={[styles.chipText,v===selected&&{color:color.bg}]}>{v.replaceAll('_',' ')}</Text>
+  return <View style={styles.chips} accessibilityRole="radiogroup">{values.map(v=><Pressable
+    key={v} accessibilityRole="radio" accessibilityState={{checked:v===selected}}
+    onPress={()=>onChange(v)} style={({pressed})=>[styles.chip,v===selected&&styles.selectedChip,
+      pressed&&styles.pressedButton]}>
+    <Text style={[styles.chipText,v===selected&&styles.selectedChipText]}>{v.replaceAll('_',' ')}</Text>
   </Pressable>)}</View>
 }
 function Section({title,children}:{title:string;children:React.ReactNode}) {
-  return <View style={styles.section}><Text style={styles.heading}>{title}</Text>{children}</View>
+  return <View style={styles.section}>
+    <View style={styles.sectionHeader}><Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionAccent}/></View>
+    {children}
+  </View>
 }
 function formatQuest(q:Quest,onPress:()=>void) {
   return <Pressable key={q.id} accessibilityRole="button" onPress={onPress} style={styles.card}>
@@ -258,9 +279,9 @@ export default function App() {
         {loading&&<ActivityIndicator color={color.accent}/>}
         {!loading&&items.length===0&&<Card><Small>No Quests found.</Small></Card>}
         {items.map(q=>formatQuest(q,()=>openQuest(q)))}
-        <View style={styles.actions}><Action kind="secondary" label="Previous" disabled={page===0}
+        <View style={styles.actions}><Action compact kind="secondary" label="Previous" disabled={page===0}
           onPress={()=>setPage(n=>n-1)}/><Text style={styles.muted}>Page {page+1}</Text>
-          <Action kind="secondary" label="Next" disabled={!hasNext} onPress={()=>setPage(n=>n+1)}/></View>
+          <Action compact kind="secondary" label="Next" disabled={!hasNext} onPress={()=>setPage(n=>n+1)}/></View>
       </Section>:
       !user?<Section title="Welcome to SideQuest">
         <Chips values={['login','register']} selected={authMode} onChange={x=>setAuthMode(x as 'login'|'register')}/>
@@ -437,24 +458,41 @@ export default function App() {
 }
 
 const styles=StyleSheet.create({
-  root:{flex:1,backgroundColor:color.bg},header:{padding:18,borderBottomWidth:1,borderColor:color.border,gap:4},
-  brand:{fontSize:24,fontWeight:'800',color:color.accent},content:{padding:18,paddingBottom:30,gap:18},
-  section:{gap:14},hero:{color:color.text,fontSize:29,fontWeight:'800',lineHeight:38},
-  heading:{color:color.text,fontSize:19,fontWeight:'700'},subheading:{color:color.cyan,fontSize:17,fontWeight:'700',marginTop:14},
-  label:{color:color.text,fontSize:14,fontWeight:'700'},muted:{color:color.muted,fontSize:14,lineHeight:21},
-  body:{color:color.text,fontSize:15,lineHeight:24},reward:{color:color.reward,fontSize:17,fontWeight:'700'},
-  card:{backgroundColor:color.card,borderColor:color.border,borderWidth:1,borderRadius:16,padding:18,gap:10},
-  field:{gap:8},input:{color:color.text,backgroundColor:color.card,borderColor:color.border,borderWidth:1,
-    borderRadius:10,minHeight:48,padding:12,fontSize:16},
-  button:{minHeight:42,paddingHorizontal:16,paddingVertical:11,borderRadius:12,backgroundColor:color.accent,
-    alignItems:'center',justifyContent:'center',alignSelf:'flex-start'},
+  root:{flex:1,backgroundColor:color.bg},
+  header:{paddingHorizontal:22,paddingTop:20,paddingBottom:16,borderBottomWidth:1,borderColor:color.border,gap:5},
+  brand:{fontSize:25,fontWeight:'800',letterSpacing:-0.5,color:color.accent},
+  content:{paddingHorizontal:20,paddingTop:24,paddingBottom:48,gap:20},
+  section:{gap:18},
+  sectionHeader:{gap:11,marginBottom:1},
+  sectionTitle:{color:color.text,fontSize:26,fontWeight:'800',letterSpacing:-0.6,lineHeight:34},
+  sectionAccent:{width:38,height:3,borderRadius:2,backgroundColor:color.accent},
+  hero:{color:color.text,fontSize:29,fontWeight:'800',lineHeight:38,letterSpacing:-0.5},
+  heading:{color:color.text,fontSize:18,fontWeight:'700',lineHeight:25},
+  subheading:{color:color.cyan,fontSize:17,fontWeight:'700',marginTop:18,marginBottom:2},
+  label:{color:color.text,fontSize:14,fontWeight:'600',letterSpacing:0.15},
+  muted:{color:color.muted,fontSize:14,lineHeight:21},
+  body:{color:color.text,fontSize:15,lineHeight:24},
+  reward:{color:color.reward,fontSize:17,fontWeight:'700'},
+  card:{backgroundColor:color.card,borderColor:color.border,borderWidth:1,borderRadius:18,padding:20,gap:14},
+  field:{gap:9,alignSelf:'stretch',width:'100%'},
+  input:{color:color.text,backgroundColor:color.card,borderColor:color.border,borderWidth:1.5,
+    borderRadius:12,minHeight:54,paddingHorizontal:15,paddingVertical:12,fontSize:16,width:'100%'},
+  inputFocused:{borderColor:color.accent,backgroundColor:color.raised},
+  multilineInput:{minHeight:118,textAlignVertical:'top'},
+  button:{minHeight:50,paddingHorizontal:16,paddingVertical:13,borderRadius:12,backgroundColor:color.accent,
+    alignItems:'center',justifyContent:'center',alignSelf:'stretch',width:'100%'},
+  compactButton:{alignSelf:'auto',width:'auto',minHeight:44,paddingHorizontal:14},
   secondaryButton:{backgroundColor:color.raised,borderWidth:1,borderColor:color.border},
-  dangerButton:{backgroundColor:'#7b3046'},
-  buttonText:{fontSize:14,fontWeight:'800',color:color.bg},actionLink:{color:color.cyan,fontWeight:'700'},
-  chips:{flexDirection:'row',gap:7,flexWrap:'wrap'},
-  chip:{backgroundColor:color.raised,padding:9,borderRadius:25,borderWidth:1,borderColor:color.border},
+  dangerButton:{backgroundColor:'#7b3046',borderWidth:1,borderColor:color.danger},
+  pressedButton:{opacity:0.56},
+  buttonText:{fontSize:15,fontWeight:'700',color:color.bg,textAlign:'center'},
+  actionLink:{color:color.cyan,fontWeight:'700'},
+  chips:{flexDirection:'row',gap:8,flexWrap:'wrap'},
+  chip:{backgroundColor:color.raised,paddingHorizontal:14,paddingVertical:11,borderRadius:22,
+    borderWidth:1,borderColor:color.border,minHeight:42,justifyContent:'center'},
   selectedChip:{backgroundColor:color.accent,borderColor:color.accent},
   chipText:{color:color.muted,fontSize:12,fontWeight:'700'},
+  selectedChipText:{color:color.bg},
   tag:{color:color.accent,fontSize:11,fontWeight:'700',backgroundColor:color.raised,padding:8,borderRadius:20},
   actions:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
   banner:{padding:14,backgroundColor:color.raised,gap:8,borderBottomWidth:1,borderColor:color.border},
