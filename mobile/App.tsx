@@ -4,7 +4,7 @@ import {
   ScrollView, StatusBar, StyleSheet, Text, TextInput, View,
 } from 'react-native'
 import { api, type Achievement, type Challenge, type Connection,
-  type Invitation, type Member, type Participation, type Profile, type Review,
+  type Invitation, type LegacyQuest, type Member, type Participation, type Profile, type Review, type SocialSettings,
   type Score, type Team, type User } from './src/client'
 import type { Quest } from './src/api'
 
@@ -86,15 +86,19 @@ export default function App() {
   const [profile,setProfile] = useState<Profile|null>(null)
   const [achievements,setAchievements] = useState<Achievement[]>([])
   const [xpHistory,setXpHistory] = useState<{id:string;questTitle:string;amount:number}[]>([])
+  const [settings,setSettings] = useState<SocialSettings|null>(null)
   const [friends,setFriends] = useState<Connection[]>([])
+  const [outgoing,setOutgoing] = useState<Connection[]>([])
   const [incoming,setIncoming] = useState<Connection[]>([])
   const [friendRanks,setFriendRanks] = useState<Score[]>([])
   const [teams,setTeams] = useState<Team[]>([])
   const [teamInvites,setTeamInvites] = useState<Invitation[]>([])
+  const [sentInvites,setSentInvites] = useState<Invitation[]>([])
   const [members,setMembers] = useState<Member[]>([])
   const [challenges,setChallenges] = useState<Challenge[]>([])
   const [teamRanks,setTeamRanks] = useState<Score[]>([])
   const [reviews,setReviews] = useState<Review[]>([])
+  const [legacyReviews,setLegacyReviews] = useState<LegacyQuest[]>([])
   const [draftName,setDraftName] = useState('')
   const [draftDescription,setDraftDescription] = useState('')
   const [category,setCategory] = useState('ADVENTURE')
@@ -102,12 +106,14 @@ export default function App() {
   const [reward,setReward] = useState('30')
   const [editingId,setEditingId] = useState<string|null>(null)
   const [friendName,setFriendName] = useState('')
+  const [blockName,setBlockName] = useState('')
   const [teamName,setTeamName] = useState('')
   const [inviteName,setInviteName] = useState('')
   const [challengeQuest,setChallengeQuest] = useState('')
   const [challengeDays,setChallengeDays] = useState('7')
   const [challengeTarget,setChallengeTarget] = useState('2')
   const [reason,setReason] = useState('DANGEROUS_ACT')
+  const [reportReason,setReportReason] = useState('OTHER')
 
   const refresh=()=>setRevision(n=>n+1)
   const changeTab=(next:Tab)=>{setTab(next);setSelected(null);setSelectedTeam(null);setError('');setNotice('');setPage(0)}
@@ -136,20 +142,20 @@ export default function App() {
         if(active){setMyQuests(quests.content);setParticipations(progress.content)}
       }
       if(tab==='Profile'){
-        const [p,a,x]=await Promise.all([api.profile(),api.achievements(),api.xp()])
-        if(active){setProfile(p);setAchievements(a.achievements);setXpHistory(x.content)}
+        const [p,a,x,s]=await Promise.all([api.profile(),api.achievements(),api.xp(),api.socialSettings()])
+        if(active){setProfile(p);setAchievements(a.achievements);setXpHistory(x.content);setSettings(s)}
       }
       if(tab==='Friends'){
-        const [f,i,r]=await Promise.all([api.friends(),api.requests('incoming'),api.friendsBoard()])
-        if(active){setFriends(f.content);setIncoming(i.content);setFriendRanks(r.content)}
+        const [f,i,o,r]=await Promise.all([api.friends(),api.requests('incoming'),api.requests('outgoing'),api.friendsBoard()])
+        if(active){setFriends(f.content);setIncoming(i.content);setOutgoing(o.content);setFriendRanks(r.content)}
       }
       if(tab==='Teams'){
         const [t,i]=await Promise.all([api.teams(),api.teamInvitations()])
         if(active){setTeams(t.content);setTeamInvites(i.content)}
       }
       if(tab==='Moderation'&&moderator){
-        const r=await api.moderation()
-        if(active)setReviews(r.content)
+        const [r,l]=await Promise.all([api.moderation(),api.legacyReviews()])
+        if(active){setReviews(r.content);setLegacyReviews(l.content)}
       }
     }
     void run().catch(e=>{if(active)setError(message(e))}).finally(()=>{if(active)setLoading(false)})
@@ -159,8 +165,9 @@ export default function App() {
   useEffect(()=>{
     if(!selectedTeam)return
     let active=true
-    void Promise.all([api.teamMembers(selectedTeam.id),api.challenges(selectedTeam.id),api.teamBoard(selectedTeam.id)])
-      .then(([m,c,r])=>{if(active){setMembers(m.content);setChallenges(c.content);setTeamRanks(r.content)}})
+    void Promise.all([api.teamMembers(selectedTeam.id),api.challenges(selectedTeam.id),api.teamBoard(selectedTeam.id),
+      selectedTeam.role==='OWNER'?api.teamSentInvites(selectedTeam.id):Promise.resolve({content:[] as Invitation[]})])
+      .then(([m,c,r,i])=>{if(active){setMembers(m.content);setChallenges(c.content);setTeamRanks(r.content);setSentInvites(i.content)}})
       .catch(e=>{if(active)setError(message(e))})
     return ()=>{active=false}
   },[selectedTeam?.id,revision])
@@ -235,6 +242,14 @@ export default function App() {
           <Action label="Join Quest" disabled={busy} onPress={()=>void act(()=>api.join(selected.id),'Quest joined.',
             ()=>{setSelected(null);changeTab('My Quests')})}/>}
         </Card>
+        {user && selected.status==='PUBLISHED' && selected.creatorId!==user.id && <>
+          <Label>Report Quest for safety review</Label>
+          <Chips values={['DANGEROUS_ACT','SELF_HARM','ILLEGAL','HATE','FRAUD_SPAM','PRIVACY','OTHER']}
+            selected={reportReason} onChange={setReportReason}/>
+          <Action kind="secondary" label="Submit report" disabled={busy} onPress={()=>confirm(
+            'Report Quest?','This is an official report about '+selected.title+'.',
+            ()=>api.reportQuest(selected.id,reportReason),'Report submitted.')}/>
+        </>}
       </Section> :
       tab==='Explore'?<Section title="Explore Quests">
         <Text style={styles.hero}>Make today a little more adventurous.</Text>
@@ -291,6 +306,9 @@ export default function App() {
           <Text style={styles.reward}>✦ {profile.totalXp} XP · Level {profile.level}</Text>
           <Small>Level progress: {Math.round(profile.progressPercent)}%</Small>
           <Small>{profile.activeQuests} active · {profile.completedQuests} completed · {profile.joinedQuests} joined</Small></Card>}
+        <Text style={styles.subheading}>Profile privacy</Text>
+        {settings&&<Chips values={['PRIVATE','FRIENDS','PUBLIC']} selected={settings.visibility}
+          onChange={v=>void act(()=>api.setVisibility(v,settings.version),'Privacy updated.')}/>}
         <Text style={styles.subheading}>Achievements</Text>
         {achievements.map(a=><Card key={a.id}><Text style={styles.heading}>{a.unlocked?'★ ':'☆ '}{a.name}</Text>
           <Small>{a.description}</Small><Small>{a.progress} / {a.target}</Small></Card>)}
@@ -308,10 +326,21 @@ export default function App() {
           <Action label="Accept" disabled={busy} onPress={()=>void act(()=>api.friendDecision(c.id,'accept',c.version),'Friend added.')}/>
           <Action kind="secondary" label="Reject" disabled={busy} onPress={()=>confirm('Reject request?','Reject this friend request?',
             ()=>api.friendDecision(c.id,'reject',c.version),'Request rejected.')}/></Card>)}
+        <Text style={styles.subheading}>Outgoing requests</Text>
+        {outgoing.filter(c=>c.state==='PENDING').map(c=><Card key={c.id}>
+          <Small>Waiting for @{c.username}</Small>
+          <Action kind="secondary" label="Cancel request" disabled={busy}
+            onPress={()=>confirm('Cancel request?','Cancel the pending friend request?',
+              ()=>api.friendDecision(c.id,'cancel',c.version),'Request cancelled.')}/>
+        </Card>)}
         <Text style={styles.subheading}>My Friends</Text>
         {friends.map(f=><Card key={f.id}><Text style={styles.heading}>@{f.username}</Text>
           <Action kind="danger" label="Remove" disabled={busy} onPress={()=>confirm('Remove friend?','Remove @'+f.username+'?',
             ()=>api.friendDecision(f.id,'remove',f.version),'Friend removed.')}/></Card>)}
+        <Text style={styles.subheading}>Block a user</Text>
+        <Field label="Username to block" value={blockName} onChange={setBlockName}/>
+        <Action kind="danger" label="Block user" disabled={busy} onPress={()=>confirm('Block user?',
+          'Block @'+blockName+' from social interactions?',()=>api.block(blockName.trim()),'User blocked.',()=>setBlockName(''))}/>
         <Text style={styles.subheading}>XP Leaderboard</Text>
         {friendRanks.map(r=><Card key={r.username}><Text style={styles.body}>#{r.rank} @{r.username} · {r.earnedXp} XP</Text></Card>)}
       </Section>:
@@ -325,6 +354,13 @@ export default function App() {
           {selectedTeam.role==='OWNER'&&selectedTeam.state==='ACTIVE'&&<>
             <Field label="Invite a friend by username" value={inviteName} onChange={setInviteName}/>
             <Action label="Invite to team" disabled={busy} onPress={()=>void act(()=>api.inviteTeam(selectedTeam.id,inviteName.trim()),'Invitation sent.',()=>setInviteName(''))}/>
+            <Text style={styles.subheading}>Sent invitations</Text>
+            {sentInvites.filter(i=>i.status==='PENDING').map(i=><Card key={i.id}>
+              <Small>Waiting for @{i.recipient}</Small>
+              <Action kind="secondary" label="Cancel invitation" disabled={busy}
+                onPress={()=>confirm('Cancel invitation?','Cancel the pending team invitation?',
+                  ()=>api.cancelTeamInvite(i.id,i.version),'Invitation cancelled.')}/>
+            </Card>)}
             <Text style={styles.subheading}>New group challenge</Text>
             <Field label="Published Quest ID" value={challengeQuest} onChange={setChallengeQuest}/>
             <Field label="Duration (days)" value={challengeDays} onChange={setChallengeDays} keyboardType="numeric"/>
@@ -361,6 +397,13 @@ export default function App() {
       tab==='Moderation'&&moderator?<Section title="Quest moderation">
         <Small>Only assigned moderators can approve, reject or hide Quests. Decisions are audited.</Small>
         {reviews.length===0&&!loading&&<Card><Small>No Quests require review.</Small></Card>}
+        {legacyReviews.length>0&&<Text style={styles.subheading}>Previously published Quests</Text>}
+        {legacyReviews.map(q=><Card key={q.questId}>
+          <Text style={styles.heading}>{q.title}</Text><Small>{q.description}</Small>
+          <Action kind="secondary" disabled={busy} label="Intake for review" onPress={()=>confirm(
+            'Send for review?','This queues the Quest; it does not approve it.',
+            ()=>api.intakeLegacy(q.questId),'Quest queued for review.')}/>
+        </Card>)}
         {reviews.map(r=><Card key={r.questId}><Text style={styles.heading}>{r.title}</Text>
           <Text style={styles.body}>{r.description}</Text>
           <Small>{r.state} · {r.reports} open reports</Small>
