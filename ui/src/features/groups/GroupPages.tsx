@@ -16,7 +16,7 @@ function message(e: unknown) {
 function Pages({ current, next, previous, onPage, label }: {
   current: number; next: boolean; previous: boolean; label: string; onPage: (value: number) => void
 }) {
-  return <nav aria-label={label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+  return <nav className="sq-pagination" aria-label={label}>
     <Button variant="secondary" disabled={!previous} onClick={() => onPage(current - 1)}>Previous</Button>
     <span>Page {current + 1}</span>
     <Button variant="secondary" disabled={!next} onClick={() => onPage(current + 1)}>Next</Button>
@@ -57,7 +57,7 @@ export function TeamsPage() {
     <Card style={{display:'grid',gap:12}}>
       <h2>Create a team</h2>
       <label htmlFor="team-name">Team name (3–80 characters)</label>
-      <input id="team-name" value={name} maxLength={80} onChange={e=>setName(e.target.value)}/>
+      <input id="team-name" value={name} maxLength={80} placeholder="e.g. Weekend Explorers" autoComplete="off" style={{width:'100%'}} onChange={e=>setName(e.target.value)}/>
       <Button disabled={busy||name.trim().length<3}
         onClick={()=>void run(async()=>{const team=await createTeam(name);navigate('/teams/'+team.id)},'Team created.')}>
         Create team
@@ -163,7 +163,7 @@ export function TeamDetailPage() {
       {team.state==='ACTIVE' && team.role==='OWNER' && <Card style={{display:'grid',gap:12}}>
         <h2>Invite an accepted friend</h2>
         <label htmlFor="team-invite">Exact username</label>
-        <input id="team-invite" value={username} maxLength={30} autoComplete="off"
+        <input id="team-invite" value={username} maxLength={30} autoComplete="off" placeholder="Exact username" style={{width:'100%'}}
           onChange={e=>setUsername(e.target.value.toLowerCase())}/>
         <Button disabled={busy||!/^[a-z0-9_]{3,30}$/.test(username)}
           onClick={()=>void run(()=>inviteMember(team.id,username),'Team invitation sent.')}>Invite friend</Button>
@@ -184,15 +184,15 @@ export function TeamDetailPage() {
         <h2>Launch a group Quest challenge</h2>
         <p>Only approved published Quests are eligible. Players join and complete individually; shared XP is not awarded twice.</p>
         <label htmlFor="team-quest">Published Quest</label>
-        <select id="team-quest" value={questId} onChange={e=>setQuestId(e.target.value)}>
+        <select id="team-quest" style={{width:'100%'}} value={questId} onChange={e=>setQuestId(e.target.value)}>
           <option value="">Choose a Quest</option>
           {published.map(q=><option key={q.id} value={q.id}>{q.title}</option>)}
         </select>
         <label htmlFor="team-days">Challenge length (1–30 days)</label>
-        <input id="team-days" type="number" min={1} max={30} value={days}
+        <input id="team-days" style={{width:'100%'}} type="number" min={1} max={30} value={days}
           onChange={e=>setDays(Number(e.target.value))}/>
         <label htmlFor="team-target">Target completions (1–20)</label>
-        <input id="team-target" type="number" min={1} max={20} value={target}
+        <input id="team-target" style={{width:'100%'}} type="number" min={1} max={20} value={target}
           onChange={e=>setTarget(Number(e.target.value))}/>
         <Button disabled={busy||!questId||days<1||days>30||target<1||target>20}
           onClick={()=>void run(()=>addChallenge(team.id,questId,days,target),'Challenge launched.')}>
