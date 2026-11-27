@@ -106,7 +106,7 @@ export default function App() {
           <Text style={styles.body}>{result.page + 1} / {result.totalPages}</Text>
           <Pressable accessibilityRole="button" disabled={!result.hasNext} onPress={() => setPage(p => p + 1)}>
             <Text style={[styles.open, !result.hasNext && styles.disabled]}>Next →</Text></Pressable>
-        </View> : null}
+        </View> : undefined}
       />}
     </>}
     <View style={styles.footer}><Text style={styles.footerText}>EXPLORE  ✦  SIDEQUEST MOBILE</Text></View>
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   card: { padding: 20, borderRadius: 18, backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1, gap: 12 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pill: { color: palette.accent, backgroundColor: palette.raised, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 30, fontSize: 10, letterSpacing: 0.8, fontWeight: '700' },
-  cardTitle: { fontSize: 20, fontWeight: '750', color: palette.text },
+  cardTitle: { fontSize: 20, fontWeight: '700', color: palette.text },
   body: { color: palette.muted, fontSize: 14, lineHeight: 22 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   reward: { color: palette.accent, fontSize: 16, fontWeight: '700' },
