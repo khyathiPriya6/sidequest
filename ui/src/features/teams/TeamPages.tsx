@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card/Card'
+import { useAuth } from '../auth/AuthContext'
 import { Button } from '../../components/ui/Button/Button'
 import { createTeam, myTeams, myInvites, respondInvite, teamInfo, teamMembers,
- inviteToTeam, createChallenge, challenges, scores, removeMember,
- type Team, type Invite, type Challenge, type Score, type Page } from './teamApi'
+ inviteToTeam, outgoingInvites, cancelTeamInvite, createChallenge, challenges, scores, removeMember,
+ type Team, type Invite, type OutgoingInvite, type Challenge, type Score, type Page } from './teamApi'
 
 function errorText(error:unknown){return error instanceof Error ? error.message : 'Request failed. Refresh and try again.'}
 function Pager({ data,onPage }: {data:Page<unknown>|null,onPage:(page:number)=>void}){
@@ -69,8 +70,11 @@ export function TeamsPage(){
 }
 export function TeamDetailsPage(){
  const { id='' }=useParams()
+ const { state:auth }=useAuth()
  const [team,setTeam]=useState<Team|null>(null)
  const [members,setMembers]=useState<Page<string>|null>(null)
+ const [outgoing,setOutgoing]=useState<Page<OutgoingInvite>|null>(null)
+ const [outgoingPage,setOutgoingPage]=useState(0)
  const [challengeData,setChallengeData]=useState<Page<Challenge>|null>(null)
  const [rankData,setRankData]=useState<Page<Score>|null>(null)
  const [memberPage,setMemberPage]=useState(0),[challengePage,setChallengePage]=useState(0),[rankPage,setRankPage]=useState(0)
@@ -83,10 +87,14 @@ export function TeamDetailsPage(){
   setError('')
   void Promise.all([teamInfo(id,ctrl.signal),teamMembers(id,memberPage,ctrl.signal),
    challenges(id,challengePage,ctrl.signal),scores(id,rankPage,ctrl.signal)])
-   .then(([t,m,c,s])=>{if(!ctrl.signal.aborted){setTeam(t);setMembers(m);setChallengeData(c);setRankData(s)}})
+   .then(async([t,m,c,s])=>{
+      if(ctrl.signal.aborted)return
+      const invited=t.owner?await outgoingInvites(id,outgoingPage,ctrl.signal):null
+      if(!ctrl.signal.aborted){setTeam(t);setMembers(m);setChallengeData(c);setRankData(s);setOutgoing(invited)}
+   })
    .catch(e=>{if(!ctrl.signal.aborted)setError(errorText(e))})
   return ()=>ctrl.abort()
- },[id,revision,memberPage,challengePage,rankPage])
+ },[id,revision,memberPage,challengePage,rankPage,outgoingPage])
  async function act(op:()=>Promise<unknown>,message:string){
   if(pending)return
   setPending(true);setError('');setNotice('')
@@ -101,6 +109,8 @@ export function TeamDetailsPage(){
   {error && <Card role="alert">{error}<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button></Card>}
   {notice && <p role="status">{notice}</p>}
   {team && <p>{team.members} members · {team.owner?'You own this team':'Team member'}</p>}
+  {team && !team.owner && auth.status==='authenticated' && <Button variant="secondary" disabled={pending}
+   onClick={()=>void act(()=>removeMember(id,auth.user.username),'You left the team. Return to your teams list.')}>Leave team</Button>}
   <Card style={{display:'grid',gap:'var(--space-2)'}}>
     <h2>Team members</h2>
     {members?.content.map(username=><p key={username}>{username}</p>)}
@@ -115,6 +125,16 @@ export function TeamDetailsPage(){
       onChange={e=>setUsername(e.target.value.toLowerCase())}/>
     <Button disabled={pending||!validUsername} onClick={()=>void act(()=>inviteToTeam(id,username),'Invitation sent.')}>Send invitation</Button>
     <Button variant="secondary" disabled={pending||!validUsername} onClick={()=>void act(()=>removeMember(id,username),'Member removed if present.')}>Remove member</Button>
+  </Card>}
+  {team?.owner && <Card style={{display:'grid',gap:'var(--space-2)'}}>
+    <h2>Pending invitations</h2>
+    {outgoing?.content.length===0 && <p>No pending invitations.</p>}
+    {outgoing?.content.map(inv=><div key={inv.id} style={{display:'flex',gap:'var(--space-2)',alignItems:'center',flexWrap:'wrap'}}>
+      <span>{inv.username}</span>
+      <Button variant="secondary" disabled={pending}
+        onClick={()=>void act(()=>cancelTeamInvite(id,inv.id,inv.version),'Invitation cancelled.')}>Cancel invitation</Button>
+    </div>)}
+    <Pager data={outgoing} onPage={setOutgoingPage}/>
   </Card>}
   {team?.owner && <Card style={{display:'grid',gap:'var(--space-2)'}}>
    <h2>Create group challenge</h2>
