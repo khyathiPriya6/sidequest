@@ -11,6 +11,8 @@ export type Team = { id: string; name: string; state: string; role: 'OWNER' | 'M
 export type Member = { id: string; username: string; role: string }
 export type Challenge = { id: string; questId: string; title: string; targetCompletions: number; completed: number; earnedXp: number; status: string }
 export type Score = { username: string; earnedXp: number; completed: number; rank: number }
+export type SocialSettings = { profileId: string; visibility: 'PRIVATE' | 'FRIENDS' | 'PUBLIC'; version: number }
+export type LegacyQuest = { questId: string; title: string; description: string | null; publishedAt: string | null }
 export type Review = { questId: string; title: string; description: string; state: string; questStatus: string; version: number; reports: number; reasonCode: string | null }
 export type Draft = { quest: Quest; etag: string }
 
@@ -97,6 +99,10 @@ export const api = {
   profile: () => request<Profile>('/api/v1/me/profile'),
   achievements: () => request<{achievements:Achievement[]}>('/api/v1/me/achievements'),
   xp: () => request<Page<{id:string;questTitle:string;amount:number}>>('/api/v1/me/xp-transactions?page=0&size=30'),
+  socialSettings: () => request<SocialSettings>('/api/v1/me/social/settings'),
+  setVisibility: (visibility:string,expectedVersion:number) =>
+    request<SocialSettings>('/api/v1/me/social/settings',{method:'PATCH',body:{visibility,expectedVersion}}),
+  block: (username:string) => request<void>('/api/v1/me/social/blocks',{method:'POST',body:{username}}),
   friends: () => request<Page<Connection>>('/api/v1/me/friends?page=0'),
   requests: (direction:'incoming'|'outgoing') => request<Page<Connection>>('/api/v1/me/friend-requests?direction='+direction+'&page=0'),
   addFriend: (username:string) => request<Connection>('/api/v1/me/friend-requests',{method:'POST',body:{username}}),
@@ -107,6 +113,9 @@ export const api = {
   createTeam: (name:string) => request<Team>('/api/v1/teams',{method:'POST',body:{name}}),
   teamMembers: (id:string) => request<Page<Member>>('/api/v1/teams/'+encodeURIComponent(id)+'/members?page=0'),
   teamInvitations: () => request<Page<Invitation>>('/api/v1/me/team-invitations?page=0'),
+  cancelTeamInvite: (id:string,expectedVersion:number) =>
+    request<Invitation>('/api/v1/me/team-invitations/'+encodeURIComponent(id)+'/cancel',
+      {method:'POST',body:{expectedVersion}}),
   teamSentInvites: (id:string) => request<Page<Invitation>>('/api/v1/teams/'+encodeURIComponent(id)+'/invitations?page=0'),
   inviteTeam: (id:string,username:string) => request<Invitation>('/api/v1/teams/'+encodeURIComponent(id)+'/invitations',{method:'POST',body:{username}}),
   inviteDecision: (id:string,action:string,expectedVersion:number) => request<Invitation>('/api/v1/me/team-invitations/'+encodeURIComponent(id)+'/'+action,{method:'POST',body:{expectedVersion}}),
@@ -117,6 +126,11 @@ export const api = {
   addChallenge: (id:string,questId:string,days:number,targetCompletions:number) =>
     request<Challenge>('/api/v1/teams/'+encodeURIComponent(id)+'/challenges',{method:'POST',body:{questId,days,targetCompletions}}),
   teamBoard: (id:string) => request<Page<Score>>('/api/v1/teams/'+encodeURIComponent(id)+'/leaderboard?page=0'),
+  legacyReviews: () => request<Page<LegacyQuest>>('/api/v1/moderation/legacy?page=0&size=20'),
+  intakeLegacy: (id:string) => request<Review>('/api/v1/moderation/legacy/'+encodeURIComponent(id)+'/intake',
+    {method:'POST'}),
+  reportQuest: (id:string,reason:string) => request<{id:string;status:string}>(
+    '/api/v1/quests/'+encodeURIComponent(id)+'/reports',{method:'POST',body:{reason}}),
   moderation: () => request<Page<Review>>('/api/v1/moderation/queue?page=0&size=20'),
   moderate: (item:Review,action:string,reasonCode:string) => request<Review>('/api/v1/moderation/quests/'+encodeURIComponent(item.questId)+'/decisions',
     {method:'POST',body:{action,reasonCode,expectedVersion:item.version}}),
