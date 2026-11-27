@@ -44,6 +44,15 @@ public class TeamController {
         if(form==null)throw new TeamService.Failure(400,"invalid_team_request","Missing invitee.");
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(teams.invite(me.userId(),team,form.username()));
     }
+    @PostMapping("/teams/{team}/invites/{inviteId}/cancel")
+    ResponseEntity<Void> cancel(@AuthenticationPrincipal UserPrincipal me,
+        @PathVariable UUID team,@PathVariable UUID inviteId,@RequestBody Version body){
+        if(body==null||body.expectedVersion()==null)
+            throw new TeamService.Failure(400,"invalid_team_request","Missing invitation version.");
+        teams.cancelInvite(me.userId(),team,inviteId,body.expectedVersion());
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
     @GetMapping("/me/team-invites")
     ResponseEntity<TeamService.Page<TeamService.Invite>> invites(@AuthenticationPrincipal UserPrincipal me,
        @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){
