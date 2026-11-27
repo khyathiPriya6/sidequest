@@ -38,6 +38,14 @@ public class TeamController {
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(teams.roster(me.userId(),team,page,size));
     }
+    @GetMapping("/teams/{team}/invites")
+    ResponseEntity<TeamService.Page<TeamService.OutgoingInvite>> outgoing(
+        @AuthenticationPrincipal UserPrincipal me,@PathVariable UUID team,
+        @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .body(teams.outgoing(me.userId(),team,page,size));
+    }
+
     @PostMapping("/teams/{team}/invites")
     ResponseEntity<TeamService.Invite> invite(@AuthenticationPrincipal UserPrincipal me,
         @PathVariable UUID team,@RequestBody InviteUser form){
