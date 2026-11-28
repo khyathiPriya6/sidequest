@@ -36,9 +36,9 @@ export function createAppRoutes(): RouteObject[] {
         {
           element: <RequireAuth />,
           children: [
-            { path: '/quests/new', handle: { title: 'Create a quest' }, element: <QuestDraftPage mode="create" /> },
+            { path: '/quests/new', handle: { title: 'Create a quest' }, element: <QuestDraftPage key="quest-create" mode="create" /> },
             { path: '/my/quests/new', element: <Navigate to="/quests/new" replace /> },
-            { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <QuestDraftPage mode="edit" /> },
+            { path: '/quests/:id/edit', handle: { title: 'Edit a quest' }, element: <QuestDraftPage key="quest-edit" mode="edit" /> },
             { path: '/my/quests/:id/edit', element: <LegacyQuestDashboardEditRedirect /> },
             { path: '/my-quests', handle: { title: 'My quests' }, element: <MyQuestsPage /> },
             { path: '/moderation', handle: { title: 'Quest moderation' }, element: <ModeratorDashboard /> },
