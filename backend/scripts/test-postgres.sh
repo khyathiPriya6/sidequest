@@ -4,7 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${JAVA_HOME:?Set JAVA_HOME to a Java 21 installation}"
 PG_BIN="${PG_BIN:-/Library/PostgreSQL/18/bin}"
-test_root=$(mktemp -d /private/tmp/sidequest-pg.XXXXXX)
+if [[ ! -x "$PG_BIN/initdb" ]]; then
+  echo "PostgreSQL binaries not found at $PG_BIN; set PG_BIN to a directory containing initdb, pg_ctl, createdb" >&2
+  exit 1
+fi
+test_root=$(mktemp -d "${TMPDIR:-/tmp}/sidequest-pg.XXXXXX")
 test_port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
 cleanup() { "$PG_BIN/pg_ctl" -D "$test_root/data" -m fast -w stop >/dev/null 2>&1 || true; }
 trap cleanup EXIT

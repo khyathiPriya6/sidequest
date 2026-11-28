@@ -1,0 +1,49 @@
+# LOCAL DEVELOPMENT ONLY. Do not deploy as a production stack.
+# Launch with: docker compose --env-file .env.docker up --build
+name: sidequest-local
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sidequest
+      POSTGRES_USER: sidequest
+      POSTGRES_PASSWORD: ${SIDEQUEST_DB_PASSWORD:?Set SIDEQUEST_DB_PASSWORD in .env.docker}
+    volumes:
+      - sidequest_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sidequest -d sidequest"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # No host database port: avoids touching/conflicting with your existing PostgreSQL.
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DATABASE_URL: jdbc:postgresql://db:5432/sidequest
+      DATABASE_USERNAME: sidequest
+      DATABASE_PASSWORD: ${SIDEQUEST_DB_PASSWORD:?Set SIDEQUEST_DB_PASSWORD in .env.docker}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: http://api:8080
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  sidequest_data:
