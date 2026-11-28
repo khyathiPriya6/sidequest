@@ -31,8 +31,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql postgresql-client
       - name: Run isolated PostgreSQL integration suite
-        env:
-          PG_BIN: /usr/lib/postgresql/16/bin
         run: |
           # PostgreSQL binaries supplied by the runner can vary in major version.
           PG_BIN="$(pg_config --bindir)" bash backend/scripts/test-postgres.sh
@@ -69,4 +67,4 @@ jobs:
       # M7 follow-up: commit a reproducible mobile lockfile and switch to npm ci.
       - run: npm install --no-audit --no-fund
       - run: npm run check
-      - run: npx --no-install expo-doctor
+      - run: npx --yes expo-doctor
