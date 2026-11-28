@@ -55,7 +55,12 @@ it('creates a real draft and preserves the edit flow', async () => {
   fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'A valid description' } })
   await user.click(screen.getByRole('button', { name: 'Save draft' }))
   await waitFor(() => expect(router.state.location.pathname).toBe('/quests/draft-1/edit'))
-  expect(await screen.findByText('Saved')).toBeVisible()
+  // Creation navigates to a new edit-page instance. Its transient "Saved" flag
+  // is not preserved; the persisted draft should instead be loaded correctly.
+  expect(await screen.findByRole('heading', { name: 'Edit quest draft' })).toBeVisible()
+  expect(await screen.findByRole('textbox', { name: 'Title' })).toHaveValue('A valid title')
+  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('A valid description')
+  expect(screen.getByText('No unsaved changes')).toBeVisible()
 })
 
 it('maps accessible validation errors and preserves failed input', async () => {
