@@ -81,7 +81,9 @@ class PlayerJourneyIT extends ParticipationApiSupport {
         assertThat(send(guest, "GET", url, null, null, null).statusCode()).isEqualTo(200);
 
         // Self-enrolment is forbidden even for a published, approved quest.
-        assertThat(request(creator, "POST", url + "/join", null).statusCode()).isEqualTo(409);
+        var selfJoin = request(creator, "POST", url + "/join", null);
+        assertThat(selfJoin.statusCode()).isEqualTo(403);
+        assertThat(body(selfJoin).get("code").asText()).isEqualTo("self_enrollment_forbidden");
         var joined = request(player, "POST", url + "/join", null);
         assertThat(joined.statusCode()).as(joined.body()).isEqualTo(201);
         UUID participationId = UUID.fromString(body(joined).get("id").asText());
